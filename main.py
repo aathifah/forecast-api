@@ -78,4 +78,5 @@ def run_realtime():
 
 @app.get("/")
 def root():
+    print("✅ Endpoint root berhasil diakses")
     return {"message": "✅ FastAPI Forecast API is running"}
