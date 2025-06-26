@@ -10,6 +10,7 @@ Original file is located at
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 import shutil
 import pandas as pd
 import numpy as np
@@ -46,12 +47,14 @@ async def run_testing_forecast(file: UploadFile = File(...)):
         print(f"📁 File berhasil diupload: {input_path}")
         run_combined_forecast(file_path=input_path)
 
-        return FileResponse(
-            OUTPUT_TESTING,
-            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            filename="testing_forecast.xlsx",
-            headers={"Content-Disposition": "attachment; filename=testing_forecast.xlsx"}
+        return JSONResponse(
+            content={
+                "message": "✅ Forecast berhasil dijalankan dan file disimpan di server!",
+                "filename": "testing_forecast.xlsx",
+                "status": "success"
+            }
         )
+        
     except Exception as e:
         print(f"❌ Error saat forecasting: {e}")
         raise HTTPException(status_code=500, detail=str(e))
