@@ -1,0 +1,12 @@
+fastapi
+uvicorn
+pandas
+numpy==1.26.4
+scikit-learn
+xgboost
+openpyxl
+joblib
+tqdm
+xlwings
+statsmodels
+pmdarima
