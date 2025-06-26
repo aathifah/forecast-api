@@ -7,7 +7,6 @@ xgboost
 openpyxl
 joblib
 tqdm
-xlwings
 statsmodels
 pmdarima==2.0.4
 scipy==1.10.1
