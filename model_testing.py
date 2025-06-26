@@ -339,5 +339,5 @@ def run_combined_forecast(file_path='uploads/dataset.xlsx'):
     return final_df
 
 # Jika ingin dijalankan langsung tanpa Excel
-if __name__ == "__main__":
-    run_combined_forecast()
+# if __name__ == "__main__":
+#    run_combined_forecast()
