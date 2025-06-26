@@ -80,3 +80,7 @@ def run_realtime():
 def root():
     print("✅ Endpoint root berhasil diakses")
     return {"message": "✅ FastAPI Forecast API is running"}
+
+@app.on_event("startup")
+def on_startup():
+    print("🚀 FastAPI berhasil start di Railway")
