@@ -193,6 +193,6 @@ def run_real_time_forecast(
     print(f"✅ Forecast disimpan di: '{output_file}'")
 
 
-if __name__ == "__main__":
-    run_real_time_forecast()
+# if __name__ == "__main__":
+#    run_real_time_forecast()
 
