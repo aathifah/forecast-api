@@ -22,7 +22,6 @@ from statsmodels.tsa.holtwinters import ExponentialSmoothing
 from pmdarima import auto_arima
 from pandas import ExcelWriter
 import warnings
-import xlwings as xw
 import os
 import pickle
 
