@@ -7,13 +7,12 @@ Original file is located at
     https://colab.research.google.com/drive/1mSOpPk7Np7k9JmQa5LyUkjixpPNqvuch
 """
 
-from fastapi import FastAPI, UploadFile, File
+from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.responses import FileResponse
 import shutil
 import pandas as pd
 import numpy as np
 import os
-
 
 from model_testing import run_combined_forecast
 from model_realtime import run_real_time_forecast
@@ -21,30 +20,47 @@ from model_realtime import run_real_time_forecast
 app = FastAPI()
 
 UPLOAD_FOLDER = "uploads"
-OUTPUT_TESTING = "uploads/testing_forecast.xlsx"
-OUTPUT_REALTIME = "uploads/Forecast_Result.xlsx"
+OUTPUT_TESTING = os.path.join(UPLOAD_FOLDER, "testing_forecast.xlsx")
+OUTPUT_REALTIME = os.path.join(UPLOAD_FOLDER, "Forecast_Result.xlsx")
 
+# Pastikan folder uploads tersedia
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 @app.post("/run-testing-forecast/")
 async def run_testing_forecast(file: UploadFile = File(...)):
-    input_path = os.path.join(UPLOAD_FOLDER, file.filename)
-    with open(input_path, "wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
+    try:
+        input_path = os.path.join(UPLOAD_FOLDER, file.filename)
+        with open(input_path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
 
-    run_combined_forecast(file_path=input_path)
+        # Jalankan kombinasi forecast
+        run_combined_forecast(file_path=input_path)
 
-    return FileResponse(
-        OUTPUT_TESTING,
-        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        filename="testing_forecast.xlsx"
-    )
+        # Kembalikan hasil forecasting
+        return FileResponse(
+            OUTPUT_TESTING,
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            filename="testing_forecast.xlsx"
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/run-real-time-forecast/")
 def run_realtime():
-    run_real_time_forecast(forecast_file=OUTPUT_TESTING)
-    return FileResponse(
-        OUTPUT_REALTIME,
-        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        filename="Forecast_Result.xlsx"
-    )
+    # Validasi apakah hasil testing sudah ada
+    if not os.path.exists(OUTPUT_TESTING):
+        raise HTTPException(
+            status_code=400,
+            detail="File 'testing_forecast.xlsx' belum tersedia. Harap jalankan /run-testing-forecast/ terlebih dahulu."
+        )
+
+    try:
+        run_real_time_forecast(forecast_file=OUTPUT_TESTING)
+
+        return FileResponse(
+            OUTPUT_REALTIME,
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            filename="Forecast_Result.xlsx"
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
