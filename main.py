@@ -9,6 +9,7 @@ Original file is located at
 
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.responses import FileResponse
+from fastapi.middleware.cors import CORSMiddleware
 import shutil
 import pandas as pd
 import numpy as np
@@ -19,11 +20,20 @@ from model_realtime import run_real_time_forecast
 
 app = FastAPI()
 
+# 🔓 Mengizinkan akses dari semua domain (agar bisa dipakai di Excel / Power Automate)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Ganti jika ingin batasi akses
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 UPLOAD_FOLDER = "uploads"
 OUTPUT_TESTING = os.path.join(UPLOAD_FOLDER, "testing_forecast.xlsx")
 OUTPUT_REALTIME = os.path.join(UPLOAD_FOLDER, "Forecast_Result.xlsx")
 
-# Pastikan folder uploads tersedia
+# 📁 Pastikan folder uploads tersedia
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 @app.post("/run-testing-forecast/")
@@ -33,36 +43,37 @@ async def run_testing_forecast(file: UploadFile = File(...)):
         with open(input_path, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
 
-        # Jalankan kombinasi forecast
+        print(f"📁 File berhasil diupload: {input_path}")
         run_combined_forecast(file_path=input_path)
 
-        # Kembalikan hasil forecasting
         return FileResponse(
             OUTPUT_TESTING,
             media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            filename="testing_forecast.xlsx"
+            filename="testing_forecast.xlsx",
+            headers={"Content-Disposition": "attachment; filename=testing_forecast.xlsx"}
         )
     except Exception as e:
+        print(f"❌ Error saat forecasting: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/run-real-time-forecast/")
 def run_realtime():
-    # Validasi apakah hasil testing sudah ada
     if not os.path.exists(OUTPUT_TESTING):
         raise HTTPException(
             status_code=400,
-            detail="File 'testing_forecast.xlsx' belum tersedia. Harap jalankan /run-testing-forecast/ terlebih dahulu."
+            detail="File 'testing_forecast.xlsx' belum tersedia. Jalankan /run-testing-forecast/ dulu."
         )
-
     try:
         run_real_time_forecast(forecast_file=OUTPUT_TESTING)
 
         return FileResponse(
             OUTPUT_REALTIME,
             media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            filename="Forecast_Result.xlsx"
+            filename="Forecast_Result.xlsx",
+            headers={"Content-Disposition": "attachment; filename=Forecast_Result.xlsx"}
         )
     except Exception as e:
+        print(f"❌ Error saat realtime forecast: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/")
