@@ -248,7 +248,7 @@ def process_part(part, part_df, test_months, full_df):
                     pred = model.predict(X_test)[0]
                     tuned_pred, best_model = tune_model_if_needed(name, model, X_train, y_train, X_test, actual, pred)
                     preds[name] = tuned_pred
-                    ml_models[name] = tuned_model
+                    ml_models[name] = best_model
             else:
                 preds[name] = np.nan
 
