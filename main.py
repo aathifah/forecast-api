@@ -38,10 +38,7 @@ OUTPUT_REALTIME = os.path.join(UPLOAD_FOLDER, "Forecast_Result.xlsx")
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 @app.post("/run-testing-forecast/")
-async def run_testing_forecast(
-    background_tasks: BackgroundTasks,
-    file: UploadFile = File(...)
-):
+async def run_testing_forecast(file: UploadFile = File(...)):
     try:
         input_path = os.path.join(UPLOAD_FOLDER, file.filename)
         with open(input_path, "wb") as buffer:
@@ -49,16 +46,15 @@ async def run_testing_forecast(
 
         print(f"📁 File berhasil diupload: {input_path}")
 
-        # Jalankan forecast di background
-        background_tasks.add_task(run_combined_forecast, file_path=input_path)
+        # ⛔ Tidak pakai background dulu
+        run_combined_forecast(file_path=input_path)
 
         return JSONResponse(
             content={
-                "message": "✅ Forecast dimulai di background, file akan disimpan di server setelah selesai.",
+                "message": "✅ Forecast selesai dan file sudah dibuat.",
                 "status": "success"
             }
         )
-        
     except Exception as e:
         print(f"❌ Error saat forecasting: {e}")
         raise HTTPException(status_code=500, detail=str(e))
