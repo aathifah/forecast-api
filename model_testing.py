@@ -325,17 +325,19 @@ def run_combined_forecast(file_path='uploads/dataset.xlsx'):
 
     # === Save to New Excel File ===
     output_file = 'uploads/testing_forecast.xlsx'
-
+    
     # Sheet 1: Original Data (raw input)
     original_df = pd.read_excel(file_path)
-
+    
     # Sheet 2: Forecast Result
     with ExcelWriter(output_file, engine='openpyxl') as writer:
         original_df.to_excel(writer, sheet_name='dataset', index=False)
         final_df.to_excel(writer, sheet_name='testing_forecast', index=False)
-
+    
     print(f"✅ File berhasil dibuat: '{output_file}' dengan 2 sheet.")
+    print(f"📊 Jumlah baris hasil forecast: {len(final_df)}")
     return final_df
+
 
 # Jika ingin dijalankan langsung tanpa Excel
 # if __name__ == "__main__":
