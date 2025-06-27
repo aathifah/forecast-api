@@ -285,10 +285,26 @@ def process_part(part, part_df, test_months, full_df):
     return part_results
 
 # === Run Combined Forecast (Backtest) ===
+import os
+import numpy as np
+import pandas as pd
+from pandas import ExcelWriter
+from joblib import Parallel, delayed
+from tqdm import tqdm
+
+# Pastikan kamu sudah definisikan fungsi process_part sesuai kebutuhanmu
+# def process_part(part_no, df_part, test_months, df_full):
+#     # proses forecasting per part, return list dict hasil forecast
+#     pass
+
 def run_combined_forecast(file_path='uploads/dataset.xlsx'):
-    # Load main data
+    print(f"📥 Membaca data dari: {file_path}")
     df = pd.read_excel(file_path)
+    
+    # Pastikan kolom MONTH bertipe datetime
     df['MONTH'] = pd.to_datetime(df['MONTH'].astype(str), format='%Y%m')
+    
+    # Grouping dan agregasi data
     df = df.groupby(['PART_NO', 'MONTH'], as_index=False).agg({
         'ORIGINAL_SHIPPING_QTY': 'sum',
         'PART_NAME': 'first',
@@ -297,64 +313,61 @@ def run_combined_forecast(file_path='uploads/dataset.xlsx'):
         'CUST_TYPE2': 'first'
     })
 
-    # Create features
+    # Membuat fitur
     df['MONTH_NUM'] = df['MONTH'].dt.month
     df['YEAR'] = df['MONTH'].dt.year
     df['MONTH_SIN'] = np.sin(2 * np.pi * df['MONTH_NUM'] / 12)
     df['MONTH_COS'] = np.cos(2 * np.pi * df['MONTH_NUM'] / 12)
-    df['LAG_1'] = df.groupby('PART_NO')['ORIGINAL_SHIPPING_QTY'].shift(1)
-    df['LAG_2'] = df.groupby('PART_NO')['ORIGINAL_SHIPPING_QTY'].shift(2)
-    df['LAG_3'] = df.groupby('PART_NO')['ORIGINAL_SHIPPING_QTY'].shift(3)
-    df['LAG_4'] = df.groupby('PART_NO')['ORIGINAL_SHIPPING_QTY'].shift(4)
-    df['LAG_5'] = df.groupby('PART_NO')['ORIGINAL_SHIPPING_QTY'].shift(5)
-    df['LAG_6'] = df.groupby('PART_NO')['ORIGINAL_SHIPPING_QTY'].shift(6)
+    for lag in range(1, 7):
+        df[f'LAG_{lag}'] = df.groupby('PART_NO')['ORIGINAL_SHIPPING_QTY'].shift(lag)
 
-    # Determine test months (last 4 months of latest year)
-    latest_year = df['MONTH'].dt.year.max()
+    # Tentukan test months (4 bulan terakhir dari tahun terbaru)
+    latest_year = df['YEAR'].max()
     latest_year_months = df[df['YEAR'] == latest_year]['MONTH'].sort_values().unique()
     test_months = pd.to_datetime(latest_year_months[-4:])
 
     part_list = df['PART_NO'].unique()
+    
+    print(f"🔄 Memulai proses forecast untuk {len(part_list)} part...")
     results_nested = Parallel(n_jobs=-1)(
         delayed(process_part)(part, df[df['PART_NO'] == part].sort_values('MONTH'), test_months, df)
         for part in tqdm(part_list, desc="Processing parts")
     )
 
+    # Gabungkan hasil
     results = [item for sublist in results_nested for item in sublist]
     final_df = pd.DataFrame(results)
 
-    # === Save to New Excel File ===
+    # Output file path
     output_file = 'uploads/testing_forecast.xlsx'
-    
-    # Sheet 1: Original Data (raw input)
+
+    # Pastikan folder 'uploads' ada
+    os.makedirs('uploads', exist_ok=True)
+
+    # Baca ulang data asli (raw input)
     original_df = pd.read_excel(file_path)
-    
-    # ✅ Cek apakah hasil forecast kosong
+
     if final_df.empty:
         print("⚠️ FINAL_DF kosong — hasil forecast tidak tersedia.")
     else:
         print(f"✅ Forecast berhasil dibuat dengan {len(final_df)} baris.")
-    
-    # ✅ Tulis ke Excel
+
     try:
         with ExcelWriter(output_file, engine='openpyxl') as writer:
             original_df.to_excel(writer, sheet_name='dataset', index=False)
             final_df.to_excel(writer, sheet_name='testing_forecast', index=False)
-            writer.close()
+
         print(f"✅ File Excel berhasil dibuat: '{output_file}'")
-    
-        # ✅ Cek apakah file benar-benar dibuat dan ukurannya
+
         if os.path.exists(output_file):
             file_size_kb = os.path.getsize(output_file) / 1024
             print(f"📦 Ukuran file: {file_size_kb:.2f} KB")
         else:
             print("❌ File tidak ditemukan setelah proses tulis.")
-    
     except Exception as e:
         print(f"❌ Gagal menyimpan file Excel: {e}")
-    
-    return final_df
 
+    return final_df
 
 # Jika ingin dijalankan langsung tanpa Excel
 # if __name__ == "__main__":
