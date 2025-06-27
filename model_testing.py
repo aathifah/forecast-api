@@ -333,7 +333,6 @@ def run_combined_forecast(file_path='uploads/dataset.xlsx'):
     with ExcelWriter(output_file, engine='openpyxl') as writer:
         original_df.to_excel(writer, sheet_name='dataset', index=False)
         final_df.to_excel(writer, sheet_name='testing_forecast', index=False)
-        writer.book.save(output_file)
 
     print(f"✅ File berhasil dibuat: '{output_file}' dengan 2 sheet.")
     return final_df
