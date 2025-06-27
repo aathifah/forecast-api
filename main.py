@@ -15,7 +15,7 @@ import shutil
 import pandas as pd
 import numpy as np
 import os
-
+from fastapi import BackgroundTasks
 from model_testing import run_combined_forecast
 from model_realtime import run_real_time_forecast
 
@@ -38,19 +38,23 @@ OUTPUT_REALTIME = os.path.join(UPLOAD_FOLDER, "Forecast_Result.xlsx")
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 @app.post("/run-testing-forecast/")
-async def run_testing_forecast(file: UploadFile = File(...)):
+async def run_testing_forecast(
+    background_tasks: BackgroundTasks,
+    file: UploadFile = File(...)
+):
     try:
         input_path = os.path.join(UPLOAD_FOLDER, file.filename)
         with open(input_path, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
 
         print(f"📁 File berhasil diupload: {input_path}")
-        run_combined_forecast(file_path=input_path)
+
+        # Jalankan forecast di background
+        background_tasks.add_task(run_combined_forecast, file_path=input_path)
 
         return JSONResponse(
             content={
-                "message": "✅ Forecast berhasil dijalankan dan file disimpan di server!",
-                "filename": "testing_forecast.xlsx",
+                "message": "✅ Forecast dimulai di background, file akan disimpan di server setelah selesai.",
                 "status": "success"
             }
         )
@@ -58,6 +62,19 @@ async def run_testing_forecast(file: UploadFile = File(...)):
     except Exception as e:
         print(f"❌ Error saat forecasting: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/forecast-result/")
+def get_forecast_result():
+    if os.path.exists(OUTPUT_TESTING):
+        return FileResponse(
+            OUTPUT_TESTING,
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            filename="testing_forecast.xlsx",
+            headers={"Content-Disposition": "attachment; filename=testing_forecast.xlsx"}
+        )
+    else:
+        raise HTTPException(status_code=404, detail="File forecast belum tersedia.")
+
 
 @app.get("/run-real-time-forecast/")
 def run_realtime():
