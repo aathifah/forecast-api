@@ -7,24 +7,22 @@ Original file is located at
     https://colab.research.google.com/drive/1mSOpPk7Np7k9JmQa5LyUkjixpPNqvuch
 """
 
-from fastapi import FastAPI, UploadFile, File, HTTPException
-from fastapi.responses import FileResponse
+from fastapi import FastAPI, UploadFile, File, HTTPException, BackgroundTasks
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
 import shutil
+import os
 import pandas as pd
 import numpy as np
-import os
-from fastapi import BackgroundTasks
 from model_testing import run_combined_forecast
 from model_realtime import run_real_time_forecast
 
 app = FastAPI()
 
-# 🔓 Mengizinkan akses dari semua domain (agar bisa dipakai di Excel / Power Automate)
+# CORS Middleware setup
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Ganti jika ingin batasi akses
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -33,12 +31,10 @@ app.add_middleware(
 UPLOAD_FOLDER = "uploads"
 OUTPUT_TESTING = os.path.join(UPLOAD_FOLDER, "testing_forecast.xlsx")
 OUTPUT_REALTIME = os.path.join(UPLOAD_FOLDER, "Forecast_Result.xlsx")
-
-# 📁 Pastikan folder uploads tersedia
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 @app.post("/run-testing-forecast/")
-async def run_testing_forecast(file: UploadFile = File(...)):
+async def run_testing_forecast(file: UploadFile = File(...), background_tasks: BackgroundTasks = BackgroundTasks()):
     try:
         input_path = os.path.join(UPLOAD_FOLDER, file.filename)
         with open(input_path, "wb") as buffer:
@@ -46,14 +42,15 @@ async def run_testing_forecast(file: UploadFile = File(...)):
 
         print(f"📁 File berhasil diupload: {input_path}")
 
-        # ⛔ JANGAN pakai background task. Jalankan langsung!
-        run_combined_forecast(file_path=input_path)
+        # Jalankan forecast di background untuk menghindari timeout dari Power Automate
+        background_tasks.add_task(run_combined_forecast, input_path)
 
         return JSONResponse(
             content={
-                "message": "✅ Forecast berhasil dijalankan dan file disimpan di server.",
-                "status": "success"
-            }
+                "message": "⏳ Forecast sedang diproses di latar belakang.",
+                "status": "processing"
+            },
+            status_code=202
         )
     except Exception as e:
         print(f"❌ Error saat forecasting: {e}")
@@ -61,15 +58,14 @@ async def run_testing_forecast(file: UploadFile = File(...)):
 
 @app.get("/forecast-result/")
 def get_forecast_result():
-    if os.path.exists(OUTPUT_TESTING):
+    if os.path.exists(OUTPUT_TESTING) and os.path.getsize(OUTPUT_TESTING) > 0:
         return FileResponse(
             OUTPUT_TESTING,
             media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            filename="testing_forecast.xlsx",
-            headers={"Content-Disposition": "attachment; filename=testing_forecast.xlsx"}
+            filename="testing_forecast.xlsx"
         )
     else:
-        raise HTTPException(status_code=404, detail="File forecast belum tersedia.")
+        raise HTTPException(status_code=404, detail="File forecast belum tersedia atau kosong.")
 
 @app.get("/check-forecast-status/")
 def check_forecast_status():
@@ -92,8 +88,7 @@ def run_realtime():
         return FileResponse(
             OUTPUT_REALTIME,
             media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            filename="Forecast_Result.xlsx",
-            headers={"Content-Disposition": "attachment; filename=Forecast_Result.xlsx"}
+            filename="Forecast_Result.xlsx"
         )
     except Exception as e:
         print(f"❌ Error saat realtime forecast: {e}")
