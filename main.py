@@ -74,7 +74,7 @@ def get_forecast_result():
 @app.get("/check-forecast-status/")
 def check_forecast_status():
     if os.path.exists(OUTPUT_TESTING):
-        size_kb = os.path.getsize(OUTPUT_TESTING)/1024
+        size_kb = os.path.getsize(OUTPUT_TESTING) / 1024
         return {"exists": True, "size_kb": round(size_kb, 2)}
     else:
         return {"exists": False}
