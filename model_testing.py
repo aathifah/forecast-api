@@ -340,6 +340,7 @@ def run_combined_forecast(file_path='uploads/dataset.xlsx'):
         with ExcelWriter(output_file, engine='openpyxl') as writer:
             original_df.to_excel(writer, sheet_name='dataset', index=False)
             final_df.to_excel(writer, sheet_name='testing_forecast', index=False)
+            writer.close()
         print(f"✅ File Excel berhasil dibuat: '{output_file}'")
     
         # ✅ Cek apakah file benar-benar dibuat dan ukurannya
