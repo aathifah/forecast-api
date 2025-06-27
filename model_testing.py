@@ -329,13 +329,29 @@ def run_combined_forecast(file_path='uploads/dataset.xlsx'):
     # Sheet 1: Original Data (raw input)
     original_df = pd.read_excel(file_path)
     
-    # Sheet 2: Forecast Result
-    with ExcelWriter(output_file, engine='openpyxl') as writer:
-        original_df.to_excel(writer, sheet_name='dataset', index=False)
-        final_df.to_excel(writer, sheet_name='testing_forecast', index=False)
+    # ✅ Cek apakah hasil forecast kosong
+    if final_df.empty:
+        print("⚠️ FINAL_DF kosong — hasil forecast tidak tersedia.")
+    else:
+        print(f"✅ Forecast berhasil dibuat dengan {len(final_df)} baris.")
     
-    print(f"✅ File berhasil dibuat: '{output_file}' dengan 2 sheet.")
-    print(f"📊 Jumlah baris hasil forecast: {len(final_df)}")
+    # ✅ Tulis ke Excel
+    try:
+        with ExcelWriter(output_file, engine='openpyxl') as writer:
+            original_df.to_excel(writer, sheet_name='dataset', index=False)
+            final_df.to_excel(writer, sheet_name='testing_forecast', index=False)
+        print(f"✅ File Excel berhasil dibuat: '{output_file}'")
+    
+        # ✅ Cek apakah file benar-benar dibuat dan ukurannya
+        if os.path.exists(output_file):
+            file_size_kb = os.path.getsize(output_file) / 1024
+            print(f"📦 Ukuran file: {file_size_kb:.2f} KB")
+        else:
+            print("❌ File tidak ditemukan setelah proses tulis.")
+    
+    except Exception as e:
+        print(f"❌ Gagal menyimpan file Excel: {e}")
+    
     return final_df
 
 
