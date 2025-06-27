@@ -292,12 +292,15 @@ def save_forecast_to_excel(original_df, final_df, output_file):
         with ExcelWriter(output_file, engine="openpyxl", mode='w') as writer:
             original_df.to_excel(writer, sheet_name="dataset", index=False)
             final_df.to_excel(writer, sheet_name="testing_forecast", index=False)
+            writer.book.save(output_file)
 
-        if os.path.exists(output_file):
-            size_kb = os.path.getsize(output_file) / 1024
-            print(f"✅ File Excel berhasil dibuat: '{output_file}' ({size_kb:.2f} KB)")
-        else:
-            print("❌ File Excel tidak ditemukan setelah proses tulis.")
+            # ✅ Debugging tambahan untuk file hasil
+            if os.path.exists(output_file):
+                file_size = os.path.getsize(output_file)
+                print(f"📁 File hasil ditemukan. Ukuran: {file_size / 1024:.2f} KB")
+            else:
+                print("❌ File hasil forecast TIDAK ditemukan setelah proses simpan.")
+
     except Exception as e:
         print(f"❌ Gagal menyimpan file Excel: {e}")
 
