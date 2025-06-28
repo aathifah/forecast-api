@@ -1,40 +1,25 @@
 from fastapi import FastAPI, UploadFile, File
-from fastapi.responses import JSONResponse
-from fastapi.staticfiles import StaticFiles
-import shutil
-import os
+from fastapi.responses import StreamingResponse
+import pandas as pd
+from io import BytesIO
 
-# Import fungsi utama forecasting Anda
-from your_forecast_module import main_forecast_pipeline
+# Import fungsi run_pipeline_from_df dari module forecast kamu
+from forecast_module import run_pipeline_from_df  # sesuaikan nama filenya
 
 app = FastAPI()
 
-# Pastikan folder upload dan output ada
-UPLOAD_DIR = "uploads"
-OUTPUT_DIR = "outputs"
-os.makedirs(UPLOAD_DIR, exist_ok=True)
-os.makedirs(OUTPUT_DIR, exist_ok=True)
+@app.post("/forecast/")
+async def forecast(file: UploadFile = File(...)):
+    contents = await file.read()
+    df_input = pd.read_excel(BytesIO(contents))
+    df_forecast = run_pipeline_from_df(df_input)
 
-# Mount static files agar hasil forecast bisa diakses via URL
-app.mount("/outputs", StaticFiles(directory=OUTPUT_DIR), name="outputs")
+    output = BytesIO()
+    with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+        df_forecast.to_excel(writer, index=False, sheet_name='Forecast')
+    output.seek(0)
 
-@app.post("/upload-forecast/")
-async def upload_forecast(file: UploadFile = File(...)):
-    try:
-        file_location = os.path.join(UPLOAD_DIR, file.filename)
-        # Simpan file upload
-        with open(file_location, "wb") as buffer:
-            shutil.copyfileobj(file.file, buffer)
-        
-        # Jalankan forecasting pipeline
-        output_file, _ = main_forecast_pipeline(file_location, output_dir=OUTPUT_DIR)
-        
-        # Dapatkan URL file hasil forecast
-        # Ganti dengan URL Railway Anda nanti!
-        railway_url = "https://your-railway-app-url.up.railway.app"
-        file_url = f"{railway_url}/outputs/{os.path.basename(output_file)}"
-        
-        return {"forecast_file_url": file_url}
-    
-    except Exception as e:
-        return JSONResponse(status_code=500, content={"error": str(e)})
+    headers = {
+        "Content-Disposition": "attachment; filename=forecast_output.xlsx"
+    }
+    return StreamingResponse(output, media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', headers=headers)
