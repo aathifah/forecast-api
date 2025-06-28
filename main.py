@@ -4,7 +4,8 @@ import pandas as pd
 from io import BytesIO
 
 # Import fungsi run_pipeline_from_df dari module forecast kamu
-from forecast_module import run_pipeline_from_df  # sesuaikan nama filenya
+from program9 import run_pipeline_from_df
+
 
 app = FastAPI()
 
