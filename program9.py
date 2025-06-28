@@ -320,7 +320,7 @@ def run_pipeline_from_df(df):
     return df_real_time_forecast
 
 # Jika run langsung, contoh:
-if __name__ == "__main__":
-    df_input = pd.read_excel('dataset.xlsx')
-    df_result = run_pipeline_from_df(df_input)
-    df_result.to_excel('hasil_forecast.xlsx', index=False)
+#if __name__ == "__main__":
+#    df_input = pd.read_excel('dataset.xlsx')
+#    df_result = run_pipeline_from_df(df_input)
+#    df_result.to_excel('hasil_forecast.xlsx', index=False)
