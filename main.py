@@ -1,26 +1,171 @@
-from fastapi import FastAPI, UploadFile, File
-from fastapi.responses import StreamingResponse
+from fastapi import FastAPI, File, UploadFile, HTTPException
+from fastapi.responses import JSONResponse
 import pandas as pd
-from io import BytesIO
+import io
+import base64
+from datetime import datetime
+import logging
+from forecast_service import process_forecast
 
-# Import fungsi run_pipeline_from_df dari module forecast kamu
-from program9 import run_pipeline_from_df
+# Setup logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
+app = FastAPI(
+    title="Forecast API",
+    description="API untuk forecasting dengan machine learning",
+    version="1.0.0"
+)
 
-app = FastAPI()
-
-@app.post("/forecast/")
-async def forecast(file: UploadFile = File(...)):
-    contents = await file.read()
-    df_input = pd.read_excel(BytesIO(contents))
-    df_forecast = run_pipeline_from_df(df_input)
-
-    output = BytesIO()
-    with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
-        df_forecast.to_excel(writer, index=False, sheet_name='Forecast')
-    output.seek(0)
-
-    headers = {
-        "Content-Disposition": "attachment; filename=forecast_output.xlsx"
+@app.get("/")
+async def root():
+    return {
+        "message": "Forecast API is running!",
+        "version": "1.0.0",
+        "timestamp": datetime.now().isoformat(),
+        "endpoints": {
+            "health": "/health",
+            "forecast": "/forecast",
+            "docs": "/docs"
+        }
     }
-    return StreamingResponse(output, media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', headers=headers)
+
+@app.get("/health")
+async def health_check():
+    return {
+        "status": "healthy",
+        "timestamp": datetime.now().isoformat(),
+        "service": "forecast-api"
+    }
+
+@app.post("/forecast")
+async def forecast_endpoint(file: UploadFile = File(...)):
+    """
+    Endpoint untuk melakukan forecasting dari file Excel
+    """
+    try:
+        logger.info(f"Received file: {file.filename}")
+        
+        # Validasi file
+        if not file.filename.endswith(('.xlsx', '.xls')):
+            raise HTTPException(
+                status_code=400, 
+                detail="File harus berformat Excel (.xlsx atau .xls)"
+            )
+        
+        # Baca file Excel
+        content = await file.read()
+        df = pd.read_excel(io.BytesIO(content))
+        
+        logger.info(f"File loaded successfully. Shape: {df.shape}")
+        
+        # Validasi kolom yang diperlukan
+        required_columns = ['MONTH', 'PART_NO', 'ORIGINAL_SHIPPING_QTY']
+        missing_columns = [col for col in required_columns if col not in df.columns]
+        
+        if missing_columns:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Kolom yang diperlukan tidak ditemukan: {missing_columns}"
+            )
+        
+        # Proses forecasting
+        result = process_forecast(df)
+        
+        if result["status"] == "error":
+            raise HTTPException(
+                status_code=500,
+                detail=result["message"]
+            )
+        
+        logger.info("Forecast processing completed successfully")
+        
+        return JSONResponse(
+            content=result,
+            status_code=200,
+            headers={
+                "Content-Type": "application/json",
+                "Access-Control-Allow-Origin": "*"
+            }
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Unexpected error: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Internal server error: {str(e)}"
+        )
+
+@app.post("/forecast-base64")
+async def forecast_base64_endpoint(data: dict):
+    """
+    Endpoint untuk forecasting dengan data base64 (untuk Power Automate)
+    """
+    try:
+        logger.info("Received base64 data request")
+        
+        # Validasi input
+        if "excel_base64" not in data:
+            raise HTTPException(
+                status_code=400,
+                detail="Parameter 'excel_base64' diperlukan"
+            )
+        
+        # Decode base64
+        try:
+            excel_content = base64.b64decode(data["excel_base64"])
+        except Exception as e:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid base64 data: {str(e)}"
+            )
+        
+        # Baca file Excel
+        df = pd.read_excel(io.BytesIO(excel_content))
+        
+        logger.info(f"File loaded successfully. Shape: {df.shape}")
+        
+        # Validasi kolom
+        required_columns = ['MONTH', 'PART_NO', 'ORIGINAL_SHIPPING_QTY']
+        missing_columns = [col for col in required_columns if col not in df.columns]
+        
+        if missing_columns:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Kolom yang diperlukan tidak ditemukan: {missing_columns}"
+            )
+        
+        # Proses forecasting
+        result = process_forecast(df)
+        
+        if result["status"] == "error":
+            raise HTTPException(
+                status_code=500,
+                detail=result["message"]
+            )
+        
+        logger.info("Forecast processing completed successfully")
+        
+        return JSONResponse(
+            content=result,
+            status_code=200,
+            headers={
+                "Content-Type": "application/json",
+                "Access-Control-Allow-Origin": "*"
+            }
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Unexpected error: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Internal server error: {str(e)}"
+        )
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)
