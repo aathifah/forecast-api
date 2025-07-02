@@ -92,7 +92,7 @@ async def forecast_endpoint(file: UploadFile = File(...)):
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Unexpected error: {str(e)}")
+        logger.error(f"Unexpected error in /forecast: {str(e)}") # Lebih spesifik untuk logging
         raise HTTPException(
             status_code=500,
             detail=f"Internal server error: {str(e)}"
@@ -115,8 +115,14 @@ async def forecast_base64_endpoint(data: dict):
         
         # Decode base64
         try:
-            excel_content = base64.b64decode(data["excel_base64"])
+            # --- PERUBAHAN PENTING DI SINI ---
+            # Meng-encode string base64 ke bytes sebelum mendekode
+            excel_content = base64.b64decode(data["excel_base64"].encode('utf-8'))
+            # --- AKHIR PERUBAHAN ---
+
         except Exception as e:
+            # Menangkap error spesifik untuk decoding base64
+            logger.error(f"Base64 decoding error: {str(e)}")
             raise HTTPException(
                 status_code=400,
                 detail=f"Invalid base64 data: {str(e)}"
@@ -160,7 +166,7 @@ async def forecast_base64_endpoint(data: dict):
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Unexpected error: {str(e)}")
+        logger.error(f"Unexpected error in /forecast-base64: {str(e)}") # Lebih spesifik untuk logging
         raise HTTPException(
             status_code=500,
             detail=f"Internal server error: {str(e)}"
