@@ -61,6 +61,7 @@ async def forecast_endpoint(file: UploadFile = File(...)):
     """
     try:
         logger.info(f"Received file upload request for: {file.filename}, content_type: {file.content_type}")
+        logger.info(f"Received request with method: {request.method} to path: {request.url.path}") # Logging metode
         
         # Validasi tipe file
         if not file.filename.endswith(('.xlsx', '.xls')):
