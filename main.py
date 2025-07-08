@@ -1,4 +1,4 @@
-from fastapi import FastAPI, File, UploadFile, HTTPException
+from fastapi import FastAPI, File, UploadFile, HTTPException, Request
 from fastapi.responses import JSONResponse
 import pandas as pd
 import io
@@ -237,6 +237,75 @@ async def forecast_base64_endpoint(request_body: ForecastRequest): # Menggunakan
         raise HTTPException(
             status_code=500,
             detail=f"Internal server error processing base64 data: {str(e)}"
+        )
+
+@app.post("/forecast-raw")
+async def forecast_raw(request: Request):
+    """
+    Endpoint untuk menerima file Excel sebagai raw body (application/octet-stream),
+    cocok untuk Power Automate Web yang tidak mendukung multipart/form-data.
+    """
+    try:
+        logger.info("Received raw body request for Excel file.")
+        content = await request.body()  # baca seluruh body sebagai bytes
+        logger.info(f"Raw body length: {len(content)} bytes.")
+
+        # Pastikan file tidak kosong
+        if not content:
+            logger.warning("Received an empty Excel file (raw body).")
+            raise HTTPException(
+                status_code=400,
+                detail="File Excel tidak boleh kosong."
+            )
+
+        # Simpan file untuk debug (opsional)
+        with open("debug_received_raw.xlsx", "wb") as f:
+            f.write(content)
+
+        df = pd.read_excel(io.BytesIO(content), engine="openpyxl")
+        logger.info(f"Raw body Excel loaded successfully. Shape: {df.shape}")
+
+        # Validasi kolom yang diperlukan
+        required_columns = ['MONTH', 'PART_NO', 'ORIGINAL_SHIPPING_QTY']
+        missing_columns = [col for col in required_columns if col not in df.columns]
+        if missing_columns:
+            logger.warning(f"Missing required columns in raw Excel: {missing_columns}")
+            raise HTTPException(
+                status_code=400,
+                detail=f"Kolom yang diperlukan tidak ditemukan: {missing_columns}"
+            )
+
+        # Proses forecasting
+        logger.info("Starting forecast processing from raw body...")
+        result = process_forecast(df)
+        if result["status"] == "error":
+            logger.error(f"Forecast processing from raw body failed: {result.get('message', 'Unknown error')}")
+            raise HTTPException(
+                status_code=500,
+                detail=result["message"]
+            )
+        logger.info("Forecast processing from raw body completed successfully.")
+        return JSONResponse(
+            content=result,
+            status_code=200,
+            headers={
+                "Content-Type": "application/json",
+                "Access-Control-Allow-Origin": "*"
+            }
+        )
+    except HTTPException:
+        raise
+    except pd.errors.EmptyDataError:
+        logger.error("Pandas EmptyDataError: Excel file (raw body) is empty or malformed.")
+        raise HTTPException(
+            status_code=400,
+            detail="File Excel kosong atau tidak valid."
+        )
+    except Exception as e:
+        logger.error(f"Unexpected error in /forecast-raw endpoint: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Internal server error processing raw Excel file: {str(e)}"
         )
 
 if __name__ == "__main__":
