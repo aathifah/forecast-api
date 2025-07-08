@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Forecast Dashboard</title>
+  <link rel="stylesheet" href="style.css">
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+  <div class="container">
+    <h1>Forecast Dashboard</h1>
+    <form id="upload-form">
+      <input type="file" id="file-input" accept=".xlsx,.xls" required />
+      <button type="submit">Upload & Forecast</button>
+    </form>
+    <div id="loading" style="display:none;">Processing...</div>
+    <div id="result"></div>
+    <div class="chart-section">
+      <canvas id="forecastChart"></canvas>
+    </div>
+  </div>
+  <script src="script.js"></script>
+</body>
+</html>
