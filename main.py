@@ -184,6 +184,8 @@ async def forecast_base64_endpoint(request_body: ForecastRequest): # Menggunakan
                 detail="Konten file Excel yang didecode dari base64 kosong atau tidak valid."
             )
 
+        with open("debug_received.xlsx", "wb") as f:
+            f.write(excel_content)
         df = pd.read_excel(io.BytesIO(excel_content), engine="openpyxl")
         
         logger.info(f"File from base64 loaded successfully into DataFrame. Shape: {df.shape}")
