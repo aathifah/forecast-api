@@ -83,7 +83,7 @@ async def forecast_endpoint(file: UploadFile = File(...)):
                 detail="File Excel tidak boleh kosong."
             )
 
-        df = pd.read_excel(io.BytesIO(content))
+        df = pd.read_excel(io.BytesIO(content), engine="openpyxl")
         
         logger.info(f"File '{file.filename}' loaded successfully. Shape: {df.shape}")
         
@@ -184,7 +184,7 @@ async def forecast_base64_endpoint(request_body: ForecastRequest): # Menggunakan
                 detail="Konten file Excel yang didecode dari base64 kosong atau tidak valid."
             )
 
-        df = pd.read_excel(io.BytesIO(excel_content))
+        df = pd.read_excel(io.BytesIO(excel_content), engine="openpyxl")
         
         logger.info(f"File from base64 loaded successfully into DataFrame. Shape: {df.shape}")
         
