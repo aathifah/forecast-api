@@ -6,7 +6,8 @@ import base64
 from datetime import datetime
 import logging
 from pydantic import BaseModel # Import BaseModel dari pydantic
-from forecast_service import process_forecast
+from forecast_service import process_forecast, run_real_time_forecast, run_combined_forecast
+from fastapi.staticfiles import StaticFiles
 
 # Setup logging
 # Konfigurasi logging agar lebih detail, termasuk waktu dan nama logger
@@ -24,29 +25,11 @@ app = FastAPI(
     version="1.0.0"
 )
 
-@app.get("/")
-async def root():
-    """
-    Root endpoint untuk mengecek status API.
-    """
-    logger.info("Root endpoint accessed.")
-    return {
-        "message": "Forecast API is running!",
-        "version": "1.0.0",
-        "timestamp": datetime.now().isoformat(),
-        "endpoints": {
-            "health": "/health",
-            "forecast": "/forecast",
-            "forecast_base64": "/forecast-base64", # Tambahkan ini untuk kejelasan
-            "docs": "/docs"
-        }
-    }
+# Serve static files (frontend)
+app.mount("/", StaticFiles(directory=".", html=True), name="static")
 
-@app.get("/health")
+@app.get("/api/health")
 async def health_check():
-    """
-    Endpoint untuk health check aplikasi.
-    """
     logger.info("Health check endpoint accessed.")
     return {
         "status": "healthy",
@@ -56,72 +39,55 @@ async def health_check():
 
 @app.post("/forecast")
 async def forecast_endpoint(file: UploadFile = File(...)):
-    """
-    Endpoint untuk melakukan forecasting dari file Excel yang diunggah langsung (multipart/form-data).
-    """
     try:
         logger.info(f"Received file upload request for: {file.filename}, content_type: {file.content_type}")
-        logger.info(f"Received request with method: {request.method} to path: {request.url.path}") # Logging metode
-        
         # Validasi tipe file
-        if not file.filename.endswith(('.xlsx', '.xls')):
+        if not file.filename.endswith((".xlsx", ".xls")):
             logger.warning(f"Invalid file format received: {file.filename}")
             raise HTTPException(
                 status_code=400, 
                 detail="File harus berformat Excel (.xlsx atau .xls)"
             )
-        
-        # Baca file Excel
-        # Gunakan await file.read() untuk membaca konten file asinkron
         content = await file.read()
-        
-        # Pastikan file tidak kosong
         if not content:
             logger.warning("Received an empty Excel file.")
             raise HTTPException(
                 status_code=400,
                 detail="File Excel tidak boleh kosong."
             )
-
         df = pd.read_excel(io.BytesIO(content), engine="openpyxl")
-        
         logger.info(f"File '{file.filename}' loaded successfully. Shape: {df.shape}")
-        
-        # Validasi kolom yang diperlukan
         required_columns = ['MONTH', 'PART_NO', 'ORIGINAL_SHIPPING_QTY']
         missing_columns = [col for col in required_columns if col not in df.columns]
-        
         if missing_columns:
             logger.warning(f"Missing required columns: {missing_columns}")
             raise HTTPException(
                 status_code=400,
                 detail=f"Kolom yang diperlukan tidak ditemukan: {missing_columns}"
             )
-        
-        # Proses forecasting
         logger.info("Starting forecast processing...")
         result = process_forecast(df)
-        
+        # Tambahkan hasil forecast detail ke response JSON
+        if result["status"] == "success":
+            _, forecast_df = run_combined_forecast(df)
+            real_time_forecast = run_real_time_forecast(_, forecast_df)
+            result["data"]["forecast_results"] = real_time_forecast.to_dict(orient="records")
         if result["status"] == "error":
             logger.error(f"Forecast processing failed: {result.get('message', 'Unknown error')}")
             raise HTTPException(
                 status_code=500,
                 detail=result["message"]
             )
-        
         logger.info("Forecast processing completed successfully.")
-        
         return JSONResponse(
             content=result,
             status_code=200,
             headers={
                 "Content-Type": "application/json",
-                "Access-Control-Allow-Origin": "*" # Penting untuk CORS jika diakses dari domain lain
+                "Access-Control-Allow-Origin": "*"
             }
         )
-        
     except HTTPException:
-        # Re-raise HTTPException karena sudah ditangani sebelumnya
         raise
     except pd.errors.EmptyDataError:
         logger.error("Pandas EmptyDataError: Excel file is empty or malformed.")
@@ -130,7 +96,7 @@ async def forecast_endpoint(file: UploadFile = File(...)):
             detail="File Excel kosong atau tidak valid."
         )
     except Exception as e:
-        logger.error(f"Unexpected error in /forecast endpoint: {str(e)}", exc_info=True) # exc_info=True untuk traceback
+        logger.error(f"Unexpected error in /forecast endpoint: {str(e)}", exc_info=True)
         raise HTTPException(
             status_code=500,
             detail=f"Internal server error processing file: {str(e)}"
