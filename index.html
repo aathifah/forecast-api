@@ -70,8 +70,10 @@
       transition: background 0.2s;
       width: 100%;
     }
-    .download-form button:hover {
-      background: #285bb5;
+    .download-form button:disabled {
+      background: #bfc9d1;
+      color: #fff;
+      cursor: not-allowed;
     }
     #download-progress-bar-container {
       width: 100%;
@@ -126,7 +128,8 @@
         <div id="download-progress-bar"></div>
         <span id="download-progress-label">Processing...</span>
       </div>
-      <button type="submit">Download Forecast Excel</button>
+      <button type="button" id="process-btn">Process Forecast Excel</button>
+      <button type="button" id="download-btn" disabled>Download Forecast Excel File</button>
     </form>
     <div id="download-status"></div>
   </div>
