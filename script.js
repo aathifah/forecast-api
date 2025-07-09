@@ -143,23 +143,35 @@ function getLast12Months(monthsArr) {
   return sorted.slice(-12);
 }
 
-// Fungsi untuk mengisi dropdown bulan (12 bulan terakhir, multiple select)
-function populateDropdowns() {
+// Fungsi untuk mengisi dropdown bulan real-time (hanya bulan real time forecast, multiple, dengan opsi Semua Bulan)
+function populateRealtimeDropdown() {
   const bulanDropdown = document.getElementById('bulan-dropdown');
-  // Gabungkan semua bulan dari realtimeData dan originalData
-  const allMonths = Array.from(new Set([
-    ...originalData.map(d => d.MONTH),
-    ...realtimeData.map(d => d.MONTH)
-  ]));
-  const last12 = getLast12Months(allMonths);
-  // Multiple select
-  bulanDropdown.innerHTML = last12.map(m => `<option value="${m}">${m.replace(/T.*$/, '')}</option>`).join('');
+  if (!bulanDropdown) return;
+  // Ambil hanya bulan dari realtimeData
+  const months = Array.from(new Set(realtimeData.map(d => d.MONTH))).sort((a, b) => new Date(a) - new Date(b));
+  bulanDropdown.innerHTML = '';
+  // Opsi "Semua Bulan Real Time Forecast"
+  const allOpt = document.createElement('option');
+  allOpt.value = '__ALL__';
+  allOpt.textContent = 'Semua Bulan Real Time Forecast';
+  bulanDropdown.appendChild(allOpt);
+  months.forEach(m => {
+    const opt = document.createElement('option');
+    opt.value = m;
+    opt.textContent = m.replace(/T.*$/, '');
+    bulanDropdown.appendChild(opt);
+  });
 }
 
-// Helper: ambil array value dari multiple select
-function getSelectedMonths() {
+function getSelectedRealtimeMonths() {
   const bulanDropdown = document.getElementById('bulan-dropdown');
-  return Array.from(bulanDropdown.selectedOptions).map(opt => opt.value);
+  if (!bulanDropdown) return [];
+  const selected = Array.from(bulanDropdown.selectedOptions).map(opt => opt.value);
+  if (selected.includes('__ALL__') || selected.length === 0) {
+    // Jika pilih "Semua Bulan" atau tidak pilih apapun, return semua bulan real time
+    return Array.from(new Set(realtimeData.map(d => d.MONTH))).sort((a, b) => new Date(a) - new Date(b));
+  }
+  return selected;
 }
 
 // Fungsi render cards forecast
@@ -173,25 +185,21 @@ function renderForecastCards(filteredData) {
   document.getElementById('card-pessimist-value').textContent = totalPessimist.toLocaleString();
 }
 
-// Fungsi render chart real-time
+// Fungsi render chart real-time (line chart: 8 bulan terakhir history + 4 bulan real time forecast, 4 garis)
 function renderRealtimeDashboard() {
   const partno = document.getElementById('partno-input').value.trim();
-  const selectedMonths = getSelectedMonths();
+  const selectedMonths = getSelectedRealtimeMonths();
   // --- Data untuk cards & column chart ---
   let data = realtimeData;
   if (partno) data = data.filter(d => d.PART_NO === partno);
-  // Filter 12 bulan terakhir
-  const allMonths = Array.from(new Set(realtimeData.map(d => d.MONTH)));
-  const last12 = getLast12Months(allMonths);
-  data = data.filter(d => last12.includes(d.MONTH));
-  // Filter bulan (multiple)
+  // Filter bulan (multiple, hanya untuk cards & bar chart)
   let dataForCardAndBar = data;
   if (selectedMonths.length > 0) {
     dataForCardAndBar = data.filter(d => selectedMonths.includes(d.MONTH));
   }
   // Render cards
   renderForecastCards(dataForCardAndBar);
-  // Column chart: hanya 12 bulan terakhir, filter by part_no & bulan
+  // Column chart: hanya bulan real time forecast, filter by part_no & bulan
   const barLabels = dataForCardAndBar.map(d => d.MONTH.replace(/T.*$/, ''));
   const optimist = dataForCardAndBar.map(d => d.FORECAST_OPTIMIST);
   const neutral = dataForCardAndBar.map(d => d.FORECAST_NEUTRAL);
@@ -210,23 +218,25 @@ function renderRealtimeDashboard() {
     },
     options: { responsive: true, plugins: { legend: { position: 'top' } } }
   });
-  // --- Data untuk line chart (history + forecast), hanya 12 bulan terakhir, filter by part_no saja ---
+  // --- Data untuk line chart (8 bulan terakhir history + 4 bulan real time forecast, filter by part_no saja) ---
   let history = originalData;
   if (partno) history = history.filter(d => d.PART_NO === partno);
-  // Ambil 12 bulan terakhir dari history
-  const allHistoryMonths = Array.from(new Set(history.map(d => d.MONTH)));
-  const last12History = getLast12Months(allHistoryMonths);
-  history = history.filter(d => last12History.includes(d.MONTH));
-  // Data forecast untuk line chart (optimist, neutral, pessimist)
-  let forecastLine = realtimeData;
-  if (partno) forecastLine = forecastLine.filter(d => d.PART_NO === partno);
-  forecastLine = forecastLine.filter(d => last12History.includes(d.MONTH));
-  // Gabungkan label bulan (history + forecast, urut, unik)
-  const lineLabels = Array.from(new Set([...history.map(d => d.MONTH), ...forecastLine.map(d => d.MONTH)])).sort((a, b) => new Date(a) - new Date(b)).map(m => m.replace(/T.*$/, ''));
-  const historyMap = Object.fromEntries(history.map(d => [d.MONTH.replace(/T.*$/, ''), d.ORIGINAL_SHIPPING_QTY]));
-  const optimistMap = Object.fromEntries(forecastLine.map(d => [d.MONTH.replace(/T.*$/, ''), d.FORECAST_OPTIMIST]));
-  const neutralMap = Object.fromEntries(forecastLine.map(d => [d.MONTH.replace(/T.*$/, ''), d.FORECAST_NEUTRAL]));
-  const pessimistMap = Object.fromEntries(forecastLine.map(d => [d.MONTH.replace(/T.*$/, ''), d.FORECAST_PESSIMIST]));
+  const allHistoryMonths = Array.from(new Set(history.map(d => d.MONTH))).sort((a, b) => new Date(a) - new Date(b));
+  const last8History = allHistoryMonths.slice(-8);
+  history = history.filter(d => last8History.includes(d.MONTH));
+  let forecast = realtimeData;
+  if (partno) forecast = forecast.filter(d => d.PART_NO === partno);
+  const forecastMonths = Array.from(new Set(forecast.map(d => d.MONTH))).sort((a, b) => new Date(a) - new Date(b));
+  const last4Forecast = forecastMonths.slice(-4);
+  forecast = forecast.filter(d => last4Forecast.includes(d.MONTH));
+  // Gabungkan label bulan
+  const lineLabels = [...last8History, ...last4Forecast];
+  // Data
+  const historyMap = Object.fromEntries(history.map(d => [d.MONTH, d.ORIGINAL_SHIPPING_QTY]));
+  const optimistMap = Object.fromEntries(forecast.map(d => [d.MONTH, d.FORECAST_OPTIMIST]));
+  const neutralMap = Object.fromEntries(forecast.map(d => [d.MONTH, d.FORECAST_NEUTRAL]));
+  const pessimistMap = Object.fromEntries(forecast.map(d => [d.MONTH, d.FORECAST_PESSIMIST]));
+  // Datasets
   const lineHistory = lineLabels.map(m => historyMap[m] || null);
   const lineOptimist = lineLabels.map(m => optimistMap[m] || null);
   const lineNeutral = lineLabels.map(m => neutralMap[m] || null);
@@ -236,7 +246,7 @@ function renderRealtimeDashboard() {
   realtimeLineChart = new Chart(ctxLine, {
     type: 'line',
     data: {
-      labels: lineLabels,
+      labels: lineLabels.map(m => m.replace(/T.*$/, '')),
       datasets: [
         { label: 'History', data: lineHistory, borderColor: '#aaa', backgroundColor: 'rgba(200,200,200,0.1)', tension: 0.2 },
         { label: 'Optimist', data: lineOptimist, borderColor: '#7c4dff', backgroundColor: 'rgba(124,77,255,0.1)', tension: 0.2 },
@@ -393,12 +403,11 @@ window.addEventListener('DOMContentLoaded', () => {
   originalData = dummyOriginal;
   backtestData = dummyBacktest;
   realtimeData = dummyRealtime;
-  populateDropdowns();
+  populateRealtimeDropdown();
+  populateBacktestDropdown();
   renderRealtimeDashboard();
   renderBacktestDashboard();
   setupDashboardListeners();
-  populateBacktestDropdown();
-  renderBacktestDashboard();
   setupBacktestListeners();
 });
 
@@ -475,7 +484,8 @@ if (processBtn && fileInput && statusDiv && progressBarContainer && progressBar 
         originalData = data.original_df;
         backtestData = data.forecast_df;
         realtimeData = data.real_time_forecast;
-        populateDropdowns();
+        populateRealtimeDropdown(); // Update dropdown after backend data
+        populateBacktestDropdown(); // Update dropdown after backend data
         renderRealtimeDashboard();
         renderBacktestDashboard();
       }
