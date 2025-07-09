@@ -163,13 +163,31 @@
   align-items: center;
 }
 
-/* Info-section pojok kiri atas, space kecil */
+/* Info-section pojok kiri atas, space sangat kecil */
 .info-section {
-  padding-top: 15px;
-  padding-left: 15px;
+  padding-top: 3px;
+  padding-left: 3px;
   margin: 0;
   align-items: flex-start;
   text-align: left;
+}
+
+/* Kotak upload persegi, kanan atas, space 15px dari kanan dan atas */
+.download-container.centered-upload {
+  width: 180px;
+  height: 180px;
+  max-width: 180px;
+  min-width: 120px;
+  margin: 15px 15px 15px auto;
+  padding: 16px 10px 10px 10px;
+  font-size: 1.05rem;
+  border-radius: 18px;
+  box-shadow: 0 8px 32px 0 rgba(31,38,135,0.18);
+  background: rgba(255,255,255,0.95);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
 }
 
 @media (max-width: 1100px) {
@@ -210,22 +228,23 @@
   }
   .main-flex-upload {
     flex-direction: column;
-    gap: 32px;
-    padding: 32px 8vw;
+    gap: 16px;
+    padding: 12px 2vw;
     align-items: center;
     justify-content: center;
   }
   .info-section {
-    padding-top: 12px;
+    padding-top: 2px;
     padding-left: 0;
     align-items: center;
     text-align: center;
   }
   .download-container.centered-upload {
-    margin: 32px auto 0 auto;
-    padding: 22px 8px 16px 8px;
+    margin: 12px auto 0 auto;
+    padding: 10px 4px 8px 4px;
     min-width: 0;
-    max-width: 98vw;
+    max-width: 90vw;
     width: 90vw;
+    height: auto;
   }
 }
