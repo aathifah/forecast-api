@@ -126,11 +126,20 @@ const progressLabel = document.getElementById('download-progress-label');
 let fileId = null;
 
 function updateProcessBtnState() {
-  processBtn.disabled = !fileInput.files.length;
+  if (fileInput.files.length) {
+    processBtn.disabled = false;
+    console.log('Process button enabled');
+  } else {
+    processBtn.disabled = true;
+    console.log('Process button disabled');
+  }
 }
 
 fileInput.addEventListener('change', updateProcessBtnState);
-window.addEventListener('DOMContentLoaded', updateProcessBtnState);
+window.addEventListener('DOMContentLoaded', () => {
+  processBtn.disabled = false;
+  updateProcessBtnState();
+});
 
 if (processBtn) {
   processBtn.addEventListener('click', async function() {
