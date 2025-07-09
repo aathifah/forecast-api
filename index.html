@@ -2,36 +2,102 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Forecast Dashboard</title>
+  <title>Forecast Excel Download</title>
   <link rel="stylesheet" href="/static/style.css">
-  <!-- Chart.js CDN -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body {
+      background: #101018;
+      min-height: 100vh;
+      margin: 0;
+      padding: 0;
+      position: relative;
+      overflow-x: hidden;
+    }
+    .bg-gradient {
+      position: absolute;
+      top: -80px;
+      left: -120px;
+      width: 600px;
+      height: 600px;
+      z-index: 0;
+      opacity: 0.7;
+      background: url('/static/gradient.png') no-repeat center center;
+      background-size: cover;
+      filter: blur(0.5px);
+    }
+    .download-container {
+      position: relative;
+      z-index: 2;
+      max-width: 400px;
+      margin: 100px auto 0 auto;
+      background: rgba(255,255,255,0.95);
+      border-radius: 18px;
+      box-shadow: 0 8px 32px 0 rgba(31,38,135,0.18);
+      padding: 36px 32px 32px 32px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .download-title {
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: #222;
+      margin-bottom: 18px;
+      text-align: center;
+    }
+    .download-form {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      align-items: center;
+    }
+    .download-form input[type="file"] {
+      width: 100%;
+      padding: 8px;
+      border-radius: 6px;
+      border: 1px solid #bfc9d1;
+      background: #f7fafc;
+    }
+    .download-form button {
+      background: #3578e5;
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      padding: 10px 22px;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: background 0.2s;
+      width: 100%;
+    }
+    .download-form button:hover {
+      background: #285bb5;
+    }
+    #download-status {
+      margin-top: 10px;
+      color: #3578e5;
+      font-weight: 500;
+      text-align: center;
+    }
+    @media (max-width: 600px) {
+      .download-container {
+        max-width: 98vw;
+        padding: 18px 6vw 18px 6vw;
+      }
+    }
+  </style>
 </head>
 <body>
-  <div class="container">
-    <h1>Forecast Dashboard</h1>
-    <form id="upload-form">
-      <input type="file" id="file-input" accept=".xlsx,.xls" required />
-      <button type="submit">Upload & Forecast</button>
+  <div class="bg-gradient"></div>
+  <div class="download-container">
+    <div class="download-title">
+      Download Hasil Forecast<br>(Excel, 2 Sheet: Backtest & RealTimeForecast)
+    </div>
+    <form id="download-form" class="download-form">
+      <input type="file" id="download-file-input" accept=".xlsx,.xls" required />
+      <button type="submit">Download Forecast Excel</button>
     </form>
-    <div id="progress-bar-container" style="display:none;">
-      <div id="progress-bar"></div>
-      <span id="progress-label">Processing...</span>
-    </div>
-    <div id="loading" style="display:none;">Processing...</div>
-    <div id="result"></div>
-    <div class="chart-section">
-      <canvas id="forecastChart"></canvas>
-    </div>
-    <hr style="margin:32px 0 18px 0;">
-    <div style="text-align:center; margin-bottom:18px;">
-      <b>Download Hasil Forecast (Excel, 2 Sheet: Backtest & RealTimeForecast)</b><br>
-      <form id="download-form" style="display:inline-block; margin-top:10px;">
-        <input type="file" id="download-file-input" accept=".xlsx,.xls" required />
-        <button type="submit">Download Forecast Excel</button>
-      </form>
-      <div id="download-status"></div>
-    </div>
+    <div id="download-status"></div>
   </div>
   <script src="/static/script.js"></script>
 </body>
