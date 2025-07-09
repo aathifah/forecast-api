@@ -4,6 +4,9 @@ document.getElementById('upload-form').addEventListener('submit', async function
   const loading = document.getElementById('loading');
   const resultDiv = document.getElementById('result');
   const chartCanvas = document.getElementById('forecastChart');
+  const progressBarContainer = document.getElementById('progress-bar-container');
+  const progressBar = document.getElementById('progress-bar');
+  const progressLabel = document.getElementById('progress-label');
   resultDiv.innerHTML = '';
   chartCanvas.style.display = 'none';
 
@@ -12,15 +15,25 @@ document.getElementById('upload-form').addEventListener('submit', async function
   const formData = new FormData();
   formData.append('file', fileInput.files[0]);
 
-  loading.style.display = 'block';
+  // Show progress bar
+  progressBarContainer.style.display = 'block';
+  progressBar.style.width = '40%';
+  progressLabel.textContent = 'Uploading...';
 
   try {
+    // Simulate progress (upload + processing)
+    setTimeout(() => { progressBar.style.width = '70%'; progressLabel.textContent = 'Processing...'; }, 500);
+
     const response = await fetch('/forecast', {
       method: 'POST',
       body: formData
     });
+    progressBar.style.width = '90%';
+    progressLabel.textContent = 'Finalizing...';
     const data = await response.json();
-    loading.style.display = 'none';
+    progressBar.style.width = '100%';
+    progressLabel.textContent = 'Done!';
+    setTimeout(() => { progressBarContainer.style.display = 'none'; }, 800);
 
     if (data.status !== 'success') {
       resultDiv.innerHTML = `<div class="error">${data.message}</div>`;
@@ -97,7 +110,7 @@ document.getElementById('upload-form').addEventListener('submit', async function
     resultDiv.innerHTML += tableHtml;
 
   } catch (err) {
-    loading.style.display = 'none';
+    progressBarContainer.style.display = 'none';
     resultDiv.innerHTML = `<div class="error">Error: ${err.message}</div>`;
   }
 });
