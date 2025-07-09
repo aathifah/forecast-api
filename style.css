@@ -148,19 +148,29 @@
     padding: 0 0 0 0;
   }
   
+  /* .download-container.centered-upload yang ini perlu di-override */
+  /* Kotak upload di kanan tengah layar, space 3px dari kanan */
   .download-container.centered-upload {
-    max-width: 400px;
-    min-width: 320px;
-    width: 100%;
-    margin: 100px 0 0 80px;
-    padding: 40px 32px 32px 32px;
-    font-size: 1.15rem;
+    position: fixed; /* Menggunakan fixed agar posisinya relatif terhadap viewport */
+    top: 50%; /* Memulai dari tengah vertikal */
+    right: 3vw; /* Jarak 3vw dari sisi kanan viewport, lebih responsif */
+    transform: translateY(-50%); /* Menggeser ke atas setengah dari tinggi elemen agar benar-benar di tengah vertikal */
+    margin: 0; /* Menghilangkan margin yang mungkin ada */
+    width: 23vw; /* Menggunakan unit viewport width untuk lebar yang responsif */
+    height: auto; /* Menggunakan auto agar tinggi menyesuaikan konten */
+    max-width: 320px;
+    min-width: 200px; /* Menyesuaikan min-width agar tidak terlalu kecil */
+    min-height: 120px; /* Menyesuaikan min-height agar tidak terlalu kecil */
+    padding: 24px 20px 20px 20px; /* Menyesuaikan padding agar lebih proporsional */
+    font-size: 1.1rem;
     border-radius: 18px;
     box-shadow: 0 8px 32px 0 rgba(31,38,135,0.18);
     background: rgba(255,255,255,0.95);
     display: flex;
     flex-direction: column;
-    align-items: center;
+    align-items: flex-start;
+    justify-content: flex-start;
+    z-index: 20;
   }
   
   /* Info-section benar-benar di pojok kiri atas */
@@ -173,30 +183,6 @@
     align-items: flex-start;
     text-align: left;
     z-index: 10;
-  }
-  
-  /* Kotak upload di kanan area konten, vertikal tengah area konten, kanan 0 */
-  .download-container.centered-upload {
-    position: absolute;
-    top: 0;
-    bottom: 0;
-    right: 0;
-    margin: auto 0;
-    width: 23vw;
-    height: 15vw;
-    max-width: 320px;
-    min-width: 120px;
-    min-height: 80px;
-    padding: 16px 10px 10px 10px;
-    font-size: 1.1rem;
-    border-radius: 18px;
-    box-shadow: 0 8px 32px 0 rgba(31,38,135,0.18);
-    background: rgba(255,255,255,0.95);
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    justify-content: flex-start;
-    z-index: 20;
   }
   
   .download-title {
@@ -268,8 +254,13 @@
       align-items: center;
       text-align: center;
     }
+    /* Media query untuk kotak upload di mobile */
     .download-container.centered-upload {
-      margin: 24px auto 0 auto;
+      position: relative; /* Kembali ke posisi relatif di mobile */
+      top: unset; /* Hapus top */
+      right: unset; /* Hapus right */
+      transform: unset; /* Hapus transform */
+      margin: 24px auto 0 auto; /* Kembali ke margin auto untuk penempatan tengah */
       padding: 10px 4px 8px 4px;
       min-width: 0;
       max-width: 90vw;
