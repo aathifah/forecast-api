@@ -62,17 +62,19 @@ function updateProcessBtnState() {
     
     processBtn.disabled = !hasFile || !isValidFile;
     
+    // Reset classes
+    statusDiv.className = '';
+    
     // Tampilkan pesan error jika file tidak valid
     if (hasFile && !isValidFile) {
       const validation = validateExcelFile(fileInput.files[0]);
       statusDiv.textContent = validation.message;
-      statusDiv.style.color = '#e74c3c'; // Merah untuk error
+      statusDiv.classList.add('error');
     } else if (hasFile && isValidFile) {
       statusDiv.textContent = 'File Excel valid, siap untuk diproses.';
-      statusDiv.style.color = '#27ae60'; // Hijau untuk sukses
+      statusDiv.classList.add('success');
     } else {
       statusDiv.textContent = '';
-      statusDiv.style.color = '#3578e5'; // Reset ke warna default
     }
   }
 }
@@ -95,11 +97,11 @@ if (processBtn && fileInput && statusDiv && progressBarContainer && progressBar 
   processBtn.addEventListener('click', async function() {
     console.log('Tombol forecast diklik!');
     statusDiv.textContent = '';
-    statusDiv.style.color = '#3578e5'; // Reset warna
+    statusDiv.className = ''; // Reset classes
     
     if (!fileInput.files.length) {
       statusDiv.textContent = 'Pilih file Excel terlebih dahulu.';
-      statusDiv.style.color = '#e74c3c';
+      statusDiv.classList.add('error');
       return;
     }
 
@@ -107,7 +109,7 @@ if (processBtn && fileInput && statusDiv && progressBarContainer && progressBar 
     const validation = validateExcelFile(fileInput.files[0]);
     if (!validation.isValid) {
       statusDiv.textContent = validation.message;
-      statusDiv.style.color = '#e74c3c';
+      statusDiv.classList.add('error');
       return;
     }
 
@@ -116,7 +118,7 @@ if (processBtn && fileInput && statusDiv && progressBarContainer && progressBar 
     progressBar.style.width = '30%';
     progressLabel.textContent = 'Uploading...';
     statusDiv.textContent = 'Uploading file...';
-    statusDiv.style.color = '#3578e5';
+    statusDiv.classList.add('info');
     
     const formData = new FormData();
     formData.append('file', fileInput.files[0]);
@@ -142,7 +144,8 @@ if (processBtn && fileInput && statusDiv && progressBarContainer && progressBar 
       if (!response.ok) {
         const errText = await response.text();
         statusDiv.textContent = 'Gagal memproses: ' + errText;
-        statusDiv.style.color = '#e74c3c';
+        statusDiv.className = '';
+        statusDiv.classList.add('error');
         progressBarContainer.style.display = 'none';
         return;
       }
@@ -150,7 +153,8 @@ if (processBtn && fileInput && statusDiv && progressBarContainer && progressBar 
       const data = await response.json();
       if (data.status !== 'success' || !data.file_id) {
         statusDiv.textContent = 'Gagal proses: ' + (data.message || 'Unknown error');
-        statusDiv.style.color = '#e74c3c';
+        statusDiv.className = '';
+        statusDiv.classList.add('error');
         progressBarContainer.style.display = 'none';
         return;
       }
@@ -160,14 +164,16 @@ if (processBtn && fileInput && statusDiv && progressBarContainer && progressBar 
       progressBar.style.width = '100%';
       progressLabel.textContent = 'Forecast selesai, file diunduh';
       statusDiv.textContent = 'Forecast selesai, file diunduh.';
-      statusDiv.style.color = '#27ae60';
+      statusDiv.className = '';
+      statusDiv.classList.add('success');
       
       const downloadUrl = `/download-forecast?file_id=${encodeURIComponent(fileId)}`;
       const blobResp = await fetch(downloadUrl);
       
       if (!blobResp.ok) {
         statusDiv.textContent = 'Gagal download file hasil: ' + (await blobResp.text());
-        statusDiv.style.color = '#e74c3c';
+        statusDiv.className = '';
+        statusDiv.classList.add('error');
         return;
       }
       
@@ -192,7 +198,8 @@ if (processBtn && fileInput && statusDiv && progressBarContainer && progressBar 
       console.error('Error during forecast processing:', err);
       progressBarContainer.style.display = 'none';
       statusDiv.textContent = 'Gagal proses: ' + err.message;
-      statusDiv.style.color = '#e74c3c';
+      statusDiv.className = '';
+      statusDiv.classList.add('error');
     }
   });
 } else {
