@@ -19,10 +19,61 @@ if (!statusDiv || !progressBarContainer || !progressBar || !progressLabel) {
   console.error('Ada elemen status/progress yang tidak ditemukan di HTML!');
 }
 
+// Fungsi validasi file Excel
+function validateExcelFile(file) {
+  // Cek ekstensi file
+  const fileName = file.name.toLowerCase();
+  const validExtensions = ['.xlsx'];
+  
+  // Cek apakah file memiliki ekstensi yang valid
+  const hasValidExtension = validExtensions.some(ext => fileName.endsWith(ext));
+  
+  if (!hasValidExtension) {
+    return {
+      isValid: false,
+      message: 'Tipe File Kamu Bukan Excel. Pastikan File Tipe Excel Saja yang Kamu Unggah!'
+    };
+  }
+  
+  // Cek MIME type (opsional, untuk validasi tambahan)
+  const validMimeTypes = [
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    'application/vnd.ms-excel'
+  ];
+  
+  if (file.type && !validMimeTypes.includes(file.type)) {
+    return {
+      isValid: false,
+      message: 'Tipe File Kamu Bukan Excel. Pastikan File Tipe Excel Saja yang Kamu Unggah!'
+    };
+  }
+  
+  return {
+    isValid: true,
+    message: ''
+  };
+}
+
 // Update state tombol berdasarkan file yang dipilih
 function updateProcessBtnState() {
   if (processBtn && fileInput) {
-    processBtn.disabled = !fileInput.files.length;
+    const hasFile = fileInput.files.length > 0;
+    const isValidFile = hasFile && validateExcelFile(fileInput.files[0]).isValid;
+    
+    processBtn.disabled = !hasFile || !isValidFile;
+    
+    // Tampilkan pesan error jika file tidak valid
+    if (hasFile && !isValidFile) {
+      const validation = validateExcelFile(fileInput.files[0]);
+      statusDiv.textContent = validation.message;
+      statusDiv.style.color = '#e74c3c'; // Merah untuk error
+    } else if (hasFile && isValidFile) {
+      statusDiv.textContent = 'File Excel valid, siap untuk diproses.';
+      statusDiv.style.color = '#27ae60'; // Hijau untuk sukses
+    } else {
+      statusDiv.textContent = '';
+      statusDiv.style.color = '#3578e5'; // Reset ke warna default
+    }
   }
 }
 
@@ -44,9 +95,19 @@ if (processBtn && fileInput && statusDiv && progressBarContainer && progressBar 
   processBtn.addEventListener('click', async function() {
     console.log('Tombol forecast diklik!');
     statusDiv.textContent = '';
+    statusDiv.style.color = '#3578e5'; // Reset warna
     
     if (!fileInput.files.length) {
       statusDiv.textContent = 'Pilih file Excel terlebih dahulu.';
+      statusDiv.style.color = '#e74c3c';
+      return;
+    }
+
+    // Validasi file sebelum upload
+    const validation = validateExcelFile(fileInput.files[0]);
+    if (!validation.isValid) {
+      statusDiv.textContent = validation.message;
+      statusDiv.style.color = '#e74c3c';
       return;
     }
 
@@ -55,6 +116,7 @@ if (processBtn && fileInput && statusDiv && progressBarContainer && progressBar 
     progressBar.style.width = '30%';
     progressLabel.textContent = 'Uploading...';
     statusDiv.textContent = 'Uploading file...';
+    statusDiv.style.color = '#3578e5';
     
     const formData = new FormData();
     formData.append('file', fileInput.files[0]);
@@ -80,6 +142,7 @@ if (processBtn && fileInput && statusDiv && progressBarContainer && progressBar 
       if (!response.ok) {
         const errText = await response.text();
         statusDiv.textContent = 'Gagal memproses: ' + errText;
+        statusDiv.style.color = '#e74c3c';
         progressBarContainer.style.display = 'none';
         return;
       }
@@ -87,6 +150,7 @@ if (processBtn && fileInput && statusDiv && progressBarContainer && progressBar 
       const data = await response.json();
       if (data.status !== 'success' || !data.file_id) {
         statusDiv.textContent = 'Gagal proses: ' + (data.message || 'Unknown error');
+        statusDiv.style.color = '#e74c3c';
         progressBarContainer.style.display = 'none';
         return;
       }
@@ -96,12 +160,14 @@ if (processBtn && fileInput && statusDiv && progressBarContainer && progressBar 
       progressBar.style.width = '100%';
       progressLabel.textContent = 'Forecast selesai, file diunduh';
       statusDiv.textContent = 'Forecast selesai, file diunduh.';
+      statusDiv.style.color = '#27ae60';
       
       const downloadUrl = `/download-forecast?file_id=${encodeURIComponent(fileId)}`;
       const blobResp = await fetch(downloadUrl);
       
       if (!blobResp.ok) {
         statusDiv.textContent = 'Gagal download file hasil: ' + (await blobResp.text());
+        statusDiv.style.color = '#e74c3c';
         return;
       }
       
@@ -126,6 +192,7 @@ if (processBtn && fileInput && statusDiv && progressBarContainer && progressBar 
       console.error('Error during forecast processing:', err);
       progressBarContainer.style.display = 'none';
       statusDiv.textContent = 'Gagal proses: ' + err.message;
+      statusDiv.style.color = '#e74c3c';
     }
   });
 } else {
