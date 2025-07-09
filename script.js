@@ -116,44 +116,31 @@ document.getElementById('upload-form').addEventListener('submit', async function
 });
 
 const processBtn = document.getElementById('process-btn');
-const downloadBtn = document.getElementById('download-btn');
 const fileInput = document.getElementById('download-file-input');
 const statusDiv = document.getElementById('download-status');
 const progressBarContainer = document.getElementById('download-progress-bar-container');
 const progressBar = document.getElementById('download-progress-bar');
 const progressLabel = document.getElementById('download-progress-label');
 
-let fileId = null;
-
 function updateProcessBtnState() {
-  if (fileInput.files.length) {
-    processBtn.disabled = false;
-    console.log('Process button enabled');
-  } else {
-    processBtn.disabled = true;
-    console.log('Process button disabled');
-  }
+  processBtn.disabled = !fileInput.files.length;
 }
 
 fileInput.addEventListener('change', updateProcessBtnState);
 window.addEventListener('DOMContentLoaded', () => {
   processBtn.disabled = false;
   updateProcessBtnState();
-  console.log('DOMContentLoaded: script.js loaded, processBtn:', processBtn);
 });
 
 if (processBtn) {
   processBtn.disabled = false;
   processBtn.addEventListener('click', async function() {
-    console.log('Process Forecast Excel button clicked');
     statusDiv.textContent = '';
-    downloadBtn.disabled = true;
-    fileId = null;
     if (!fileInput.files.length) {
       statusDiv.textContent = 'Pilih file Excel terlebih dahulu.';
       return;
     }
-    // Always show progress bar and status
+    // Show progress bar and status
     progressBarContainer.style.display = 'block';
     progressBar.style.width = '30%';
     progressLabel.textContent = 'Uploading...';
@@ -181,40 +168,18 @@ if (processBtn) {
         progressBarContainer.style.display = 'none';
         return;
       }
-      fileId = data.file_id;
+      // Download file hasil otomatis
+      const fileId = data.file_id;
       progressBar.style.width = '100%';
-      progressLabel.textContent = 'Forecast Selesai';
-      statusDiv.textContent = 'Forecast Selesai. Silakan download file hasil.';
-      downloadBtn.disabled = false;
-      setTimeout(() => {
-        progressBarContainer.style.display = 'none';
-        progressBar.style.width = '0%';
-        progressLabel.textContent = '';
-      }, 1200);
-    } catch (err) {
-      progressBarContainer.style.display = 'none';
-      statusDiv.textContent = 'Gagal proses: ' + err.message;
-    }
-  });
-} else {
-  alert('Tombol Process Forecast Excel tidak ditemukan di DOM!');
-}
-
-if (downloadBtn) {
-  downloadBtn.addEventListener('click', async function() {
-    if (!fileId) {
-      statusDiv.textContent = 'File hasil belum tersedia.';
-      return;
-    }
-    statusDiv.textContent = 'Mengunduh file hasil...';
-    try {
-      const response = await fetch(`/download-forecast?file_id=${encodeURIComponent(fileId)}`);
-      if (!response.ok) {
-        const errText = await response.text();
-        statusDiv.textContent = 'Gagal download: ' + errText;
+      progressLabel.textContent = 'Forecast selesai, file diunduh';
+      statusDiv.textContent = 'Forecast selesai, file diunduh.';
+      const downloadUrl = `/download-forecast?file_id=${encodeURIComponent(fileId)}`;
+      const blobResp = await fetch(downloadUrl);
+      if (!blobResp.ok) {
+        statusDiv.textContent = 'Gagal download file hasil: ' + (await blobResp.text());
         return;
       }
-      const blob = await response.blob();
+      const blob = await blobResp.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -224,10 +189,13 @@ if (downloadBtn) {
       setTimeout(() => {
         window.URL.revokeObjectURL(url);
         document.body.removeChild(a);
-      }, 100);
-      statusDiv.textContent = 'Download berhasil!';
+        progressBarContainer.style.display = 'none';
+        progressBar.style.width = '0%';
+        progressLabel.textContent = '';
+      }, 1200);
     } catch (err) {
-      statusDiv.textContent = 'Gagal download: ' + err.message;
+      progressBarContainer.style.display = 'none';
+      statusDiv.textContent = 'Gagal proses: ' + err.message;
     }
   });
 }
