@@ -171,7 +171,7 @@
   <div class="bg-gradient"></div>
   <div class="main-flex">
     <div class="info-section">
-      <h1>Welcome to<br>3cho Upload Site</h1>
+      <h1>Welcome to<br>Forecasting Parts</h1>
       <p>
         3cho File Sharing merupakan produk dari tugas project UAS kelompok 1 dari<br>
         Tingkat 1 Rekayasa Keamanan Siber Echo pada Mata Kuliah Keamanan Aplikasi
@@ -193,5 +193,33 @@
     </div>
   </div>
   <script src="/static/script.js" defer></script>
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <!-- Section: Real-Time Forecast Dashboard -->
+  <section id="realtime-dashboard" style="margin-top:60px; max-width:1200px; margin-left:auto; margin-right:auto;">
+    <h2 style="color:#fff;">Real-Time Forecast</h2>
+    <div style="display:flex; gap:24px; align-items:center; margin-bottom:18px;">
+      <input type="text" id="partno-input" placeholder="Masukkan Part Number" style="padding:8px; border-radius:6px; border:1px solid #bfc9d1; min-width:180px;">
+      <select id="bulan-dropdown" style="padding:8px; border-radius:6px; border:1px solid #bfc9d1; min-width:140px;"></select>
+    </div>
+    <div id="realtime-charts">
+      <canvas id="realtime-bar-chart" height="120"></canvas>
+      <canvas id="realtime-line-chart" height="80" style="margin-top:32px;"></canvas>
+    </div>
+  </section>
+
+  <!-- Section: Backtesting Dashboard -->
+  <section id="backtest-dashboard" style="margin-top:60px; max-width:1200px; margin-left:auto; margin-right:auto;">
+    <h2 style="color:#fff;">Backtesting</h2>
+    <div style="display:flex; gap:24px; align-items:center; margin-bottom:18px;">
+      <input type="text" id="partno-backtest-input" placeholder="Masukkan Part Number" style="padding:8px; border-radius:6px; border:1px solid #bfc9d1; min-width:180px;">
+      <select id="bulan-backtest-dropdown" style="padding:8px; border-radius:6px; border:1px solid #bfc9d1; min-width:140px;"></select>
+    </div>
+    <div id="backtest-charts">
+      <canvas id="backtest-line-chart" height="100"></canvas>
+      <canvas id="backtest-bar-chart" height="80" style="margin-top:32px;"></canvas>
+    </div>
+  </section>
 </body>
 </html>
