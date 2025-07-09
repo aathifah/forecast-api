@@ -175,14 +175,17 @@
   z-index: 10;
 }
 
-/* Kotak upload persegi panjang, kanan atas, space 15px dari kanan, 70px dari atas */
+/* Kotak upload di kanan atas layar, space 8px dari kanan, 70px dari atas */
 .download-container.centered-upload {
+  position: absolute;
+  top: 70px;
+  right: 8px;
+  margin: 0;
   width: 23vw;
   height: 15vw;
   max-width: 320px;
   min-width: 120px;
   min-height: 80px;
-  margin: 70px 15px 15px auto;
   padding: 16px 10px 10px 10px;
   font-size: 1.1rem;
   border-radius: 18px;
@@ -192,6 +195,7 @@
   flex-direction: column;
   align-items: flex-start;
   justify-content: flex-start;
+  z-index: 20;
 }
 
 .download-title {
@@ -258,7 +262,7 @@
     justify-content: center;
   }
   .info-section {
-    padding-top: 3px;
+    padding-top: 2px;
     padding-left: 0;
     align-items: center;
     text-align: center;
