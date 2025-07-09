@@ -291,7 +291,8 @@ def run_combined_forecast(df):
     
     # Proses dataset
     df_processed = df.copy()
-    df_processed['MONTH'] = pd.to_datetime(df_processed['MONTH'].astype(str), format='%Y%m')
+    # Robust parsing for MONTH column
+    df_processed['MONTH'] = pd.to_datetime(df_processed['MONTH'], format='mixed')
     df_processed = df_processed.groupby(['PART_NO', 'MONTH'], as_index=False).agg({
         'ORIGINAL_SHIPPING_QTY': 'sum',
         'PART_NAME': 'first',
@@ -349,10 +350,11 @@ def run_real_time_forecast(original_df, forecast_df):
     logger.info("Starting real-time forecast...")
     
     df_all = original_df.copy()
-    df_all['MONTH'] = pd.to_datetime(df_all['MONTH'].astype(str), format='%Y%m')
+    # Robust parsing for MONTH column
+    df_all['MONTH'] = pd.to_datetime(df_all['MONTH'], format='mixed')
     
     df_best = forecast_df.copy()
-    df_best['MONTH'] = pd.to_datetime(df_best['MONTH'])
+    df_best['MONTH'] = pd.to_datetime(df_best['MONTH'], format='mixed')
     df_best['FORECAST'] = pd.to_numeric(df_best['FORECAST'], errors='coerce')
     df_best['ACTUAL'] = pd.to_numeric(df_best['ACTUAL'], errors='coerce')
     
