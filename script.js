@@ -139,10 +139,13 @@ fileInput.addEventListener('change', updateProcessBtnState);
 window.addEventListener('DOMContentLoaded', () => {
   processBtn.disabled = false;
   updateProcessBtnState();
+  console.log('DOMContentLoaded: script.js loaded, processBtn:', processBtn);
 });
 
 if (processBtn) {
+  processBtn.disabled = false;
   processBtn.addEventListener('click', async function() {
+    console.log('Process Forecast Excel button clicked');
     statusDiv.textContent = '';
     downloadBtn.disabled = true;
     fileId = null;
@@ -193,6 +196,8 @@ if (processBtn) {
       statusDiv.textContent = 'Gagal proses: ' + err.message;
     }
   });
+} else {
+  alert('Tombol Process Forecast Excel tidak ditemukan di DOM!');
 }
 
 if (downloadBtn) {
