@@ -10,6 +10,7 @@ from forecast_service import process_forecast, run_real_time_forecast, run_combi
 from fastapi.staticfiles import StaticFiles
 import os
 import uuid
+import tempfile
 
 # Setup logging
 # Konfigurasi logging agar lebih detail, termasuk waktu dan nama logger
@@ -29,6 +30,11 @@ app = FastAPI(
 
 # Serve static files (frontend) on /static
 app.mount("/static", StaticFiles(directory=".", html=True), name="static")
+
+# Buat direktori untuk menyimpan file hasil forecast
+TEMP_DIR = os.path.join(tempfile.gettempdir(), "forecast_results")
+os.makedirs(TEMP_DIR, exist_ok=True)
+logger.info(f"Temporary directory created: {TEMP_DIR}")
 
 @app.get("/")
 async def root():
@@ -312,7 +318,7 @@ async def process_forecast_endpoint(file: UploadFile = File(...)):
         real_time_forecast = run_real_time_forecast(df_processed, forecast_df)
         # Buat file Excel hasil
         file_id = str(uuid.uuid4())
-        output_path = f"/tmp/forecast_result_{file_id}.xlsx"
+        output_path = os.path.join(TEMP_DIR, f"forecast_result_{file_id}.xlsx")
         with pd.ExcelWriter(output_path, engine='openpyxl') as writer:
             forecast_df.to_excel(writer, sheet_name='Backtest', index=False)
             real_time_forecast.to_excel(writer, sheet_name='RealTimeForecast', index=False)
@@ -336,7 +342,7 @@ async def process_forecast_endpoint(file: UploadFile = File(...)):
 @app.get("/download-forecast")
 async def download_forecast_endpoint(file_id: str = Query(...)):
     try:
-        output_path = f"/tmp/forecast_result_{file_id}.xlsx"
+        output_path = os.path.join(TEMP_DIR, f"forecast_result_{file_id}.xlsx")
         if not os.path.exists(output_path):
             raise HTTPException(status_code=404, detail="File hasil tidak ditemukan atau sudah expired.")
         return FileResponse(
