@@ -126,33 +126,26 @@
   
   /* Upload section wrapper: flex, info-section kiri, upload kanan */
   .upload-section-wrapper {
+    position: relative;
     width: 100vw;
     min-height: 100vh;
-    display: flex;
-    align-items: flex-start;
-    justify-content: flex-start;
-    background: none;
-    position: relative;
-    z-index: 1;
+    display: block;
   }
   
   .main-flex-upload {
-    display: flex;
-    flex-direction: row;
-    align-items: flex-start;
-    justify-content: flex-start;
-    gap: 56px;
-    width: 100%;
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 0 0 0 0;
+    display: block;
+    width: 100vw;
+    max-width: 100vw;
+    position: relative;
   }
   
   /* .download-container.centered-upload yang ini perlu di-override */
   /* Kotak upload di kanan tengah layar, space 3px dari kanan */
   .download-container.centered-upload {
-    position: static;
-    margin-left: auto;
+    position: absolute;
+    top: 0;
+    right: 0;
+    margin: 80px 60px 0 0;
     width: 23vw;
     height: 15vw;
     max-width: 320px;
@@ -246,6 +239,7 @@
       justify-content: center;
     }
     .info-section {
+      position: static;
       padding-top: 2px;
       padding-left: 0;
       align-items: center;
@@ -253,12 +247,12 @@
     }
     /* Media query untuk kotak upload di mobile */
     .download-container.centered-upload {
+      position: static;
       margin: 24px auto 0 auto;
       width: 90vw;
       min-width: 0;
       max-width: 98vw;
       height: auto;
       padding: 10px 4px 8px 4px;
-      position: static;
     }
   }
