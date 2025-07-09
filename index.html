@@ -108,6 +108,21 @@
       font-weight: 500;
       text-align: center;
       min-height: 24px;
+      padding: 8px;
+      border-radius: 6px;
+      transition: all 0.3s ease;
+    }
+    #download-status.error {
+      background-color: rgba(231, 76, 60, 0.1);
+      border: 1px solid rgba(231, 76, 60, 0.3);
+    }
+    #download-status.success {
+      background-color: rgba(39, 174, 96, 0.1);
+      border: 1px solid rgba(39, 174, 96, 0.3);
+    }
+    #download-status.info {
+      background-color: rgba(53, 120, 229, 0.1);
+      border: 1px solid rgba(53, 120, 229, 0.3);
     }
     @media (max-width: 600px) {
       .download-container {
@@ -124,7 +139,7 @@
       Download Hasil Forecast<br>(Excel, 2 Sheet: Backtest & RealTimeForecast)
     </div>
     <form id="download-form" class="download-form" autocomplete="off">
-      <input type="file" id="download-file-input" accept=".xlsx,.xls" required />
+      <input type="file" id="download-file-input" accept=".xlsx" required />
       <button type="button" id="process-btn">Process Forecast Excel File</button>
       <div id="download-progress-bar-container">
         <div id="download-progress-bar"></div>
