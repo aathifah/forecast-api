@@ -225,6 +225,25 @@
       letter-spacing: 1px;
       color: #fff;
     }
+    .dashboard-2col {
+      display: flex;
+      flex-direction: row;
+      justify-content: space-between;
+      align-items: flex-start;
+      width: 100vw;
+      margin-top: 40px;
+      padding: 0 80px;
+    }
+    .dashboard-filters {
+      display: flex;
+      flex-direction: row;
+      gap: 20px;
+      margin-bottom: 20px;
+      align-items: center;
+    }
+    .centered-upload {
+      margin: 100px auto 0 auto;
+    }
     @media (max-width: 900px) {
       .main-flex {
         flex-direction: column;
@@ -238,15 +257,14 @@
       .download-container {
         margin: 40px 0 0 0;
       }
-      .dashboard-flex {
+      .dashboard-2col {
         flex-direction: column;
         align-items: center;
+        padding: 0 10vw;
       }
-      .slicer-panel {
-        flex-direction: row;
-        gap: 12px;
-        margin-bottom: 18px;
-        margin-right: 0;
+      .dashboard-filters {
+        flex-direction: column;
+        gap: 10px;
       }
       .dashboard-content {
         max-width: 98vw;
@@ -269,7 +287,7 @@
         Tingkat 1 Rekayasa Keamanan Siber Echo pada Mata Kuliah Keamanan Aplikasi
       </p>
     </div>
-    <div class="download-container">
+    <div class="download-container centered-upload">
       <div class="download-title">
         Download Hasil Forecast<br>(Excel, 2 Sheet: Backtest & RealTimeForecast)
       </div>
@@ -288,12 +306,12 @@
   <!-- Chart.js CDN -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-  <div class="dashboard-flex">
-    <div class="slicer-panel">
-      <input type="text" id="partno-input" placeholder="Masukkan Part Number" class="slicer-input">
-      <select id="bulan-dropdown" class="slicer-dropdown" multiple></select>
-    </div>
-    <div class="dashboard-content">
+  <div class="dashboard-2col">
+    <div class="dashboard-content" id="realtime-dashboard-content">
+      <div class="dashboard-filters">
+        <input type="text" id="partno-input" placeholder="Masukkan Part Number" class="slicer-input">
+        <select id="bulan-dropdown" class="slicer-dropdown" multiple></select>
+      </div>
       <section id="realtime-dashboard">
         <h2 style="color:#fff;">Real-Time Forecast</h2>
         <div class="cards-row">
@@ -315,17 +333,12 @@
           <canvas id="realtime-line-chart" height="80" style="margin-top:32px;"></canvas>
         </div>
       </section>
-      <!-- Backtesting dashboard bisa ditambahkan di bawah jika ingin -->
-    </div>
-  </div>
-
-  <!-- Section: Backtesting Dashboard -->
-  <div class="dashboard-flex" id="backtest-dashboard-flex" style="margin-top:60px; max-width:1200px; margin-left:auto; margin-right:auto;">
-    <div class="slicer-panel" id="backtest-slicer-panel">
-      <input type="text" id="partno-backtest-input" placeholder="Masukkan Part Number" class="slicer-input">
-      <select id="bulan-backtest-dropdown" class="slicer-dropdown" multiple></select>
     </div>
     <div class="dashboard-content" id="backtest-dashboard-content">
+      <div class="dashboard-filters">
+        <input type="text" id="partno-backtest-input" placeholder="Masukkan Part Number" class="slicer-input">
+        <select id="bulan-backtest-dropdown" class="slicer-dropdown" multiple></select>
+      </div>
       <h2 style="color:#fff;">Backtesting</h2>
       <div class="cards-row">
         <div class="forecast-card" id="card-backtest-qty">
