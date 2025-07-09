@@ -84,11 +84,198 @@ if (fileInput) {
   fileInput.addEventListener('change', updateProcessBtnState);
 }
 
+// ====== DASHBOARD INTERAKTIF DINAMIS ======
+// Variabel global untuk data hasil forecast
+let originalData = [];
+let backtestData = [];
+let realtimeData = [];
+
+// Chart.js instance
+let realtimeBarChart = null;
+let realtimeLineChart = null;
+let backtestLineChart = null;
+let backtestBarChart = null;
+
+// Dummy data (ganti dengan data dari backend nanti)
+const dummyOriginal = [
+  { PART_NO: '0888581844', MONTH: '2025-01', ORIGINAL_SHIPPING_QTY: 20 },
+  { PART_NO: '0888581844', MONTH: '2025-02', ORIGINAL_SHIPPING_QTY: 25 },
+  { PART_NO: '0888581844', MONTH: '2025-03', ORIGINAL_SHIPPING_QTY: 23 },
+  { PART_NO: '0888581844', MONTH: '2025-04', ORIGINAL_SHIPPING_QTY: 22 },
+  { PART_NO: '0888581844', MONTH: '2025-05', ORIGINAL_SHIPPING_QTY: 28 },
+  { PART_NO: '0888581844', MONTH: '2025-06', ORIGINAL_SHIPPING_QTY: 30 },
+  { PART_NO: '0888581844', MONTH: '2025-07', ORIGINAL_SHIPPING_QTY: 32 },
+  { PART_NO: '0888581844', MONTH: '2025-08', ORIGINAL_SHIPPING_QTY: 33 },
+  { PART_NO: '0999999999', MONTH: '2025-01', ORIGINAL_SHIPPING_QTY: 10 },
+  { PART_NO: '0999999999', MONTH: '2025-02', ORIGINAL_SHIPPING_QTY: 12 },
+  { PART_NO: '0999999999', MONTH: '2025-03', ORIGINAL_SHIPPING_QTY: 15 },
+  { PART_NO: '0999999999', MONTH: '2025-04', ORIGINAL_SHIPPING_QTY: 18 },
+  { PART_NO: '0999999999', MONTH: '2025-05', ORIGINAL_SHIPPING_QTY: 20 },
+  { PART_NO: '0999999999', MONTH: '2025-06', ORIGINAL_SHIPPING_QTY: 22 },
+  { PART_NO: '0999999999', MONTH: '2025-07', ORIGINAL_SHIPPING_QTY: 25 },
+  { PART_NO: '0999999999', MONTH: '2025-08', ORIGINAL_SHIPPING_QTY: 28 },
+];
+const dummyRealtime = [
+  { PART_NO: '0888581844', MONTH: '2025-05', FORECAST_OPTIMIST: 32, FORECAST_NEUTRAL: 28, FORECAST_PESSIMIST: 24 },
+  { PART_NO: '0888581844', MONTH: '2025-06', FORECAST_OPTIMIST: 34, FORECAST_NEUTRAL: 30, FORECAST_PESSIMIST: 26 },
+  { PART_NO: '0888581844', MONTH: '2025-07', FORECAST_OPTIMIST: 36, FORECAST_NEUTRAL: 32, FORECAST_PESSIMIST: 28 },
+  { PART_NO: '0888581844', MONTH: '2025-08', FORECAST_OPTIMIST: 38, FORECAST_NEUTRAL: 33, FORECAST_PESSIMIST: 29 },
+  { PART_NO: '0999999999', MONTH: '2025-05', FORECAST_OPTIMIST: 22, FORECAST_NEUTRAL: 20, FORECAST_PESSIMIST: 18 },
+  { PART_NO: '0999999999', MONTH: '2025-06', FORECAST_OPTIMIST: 25, FORECAST_NEUTRAL: 22, FORECAST_PESSIMIST: 20 },
+  { PART_NO: '0999999999', MONTH: '2025-07', FORECAST_OPTIMIST: 28, FORECAST_NEUTRAL: 25, FORECAST_PESSIMIST: 22 },
+  { PART_NO: '0999999999', MONTH: '2025-08', FORECAST_OPTIMIST: 30, FORECAST_NEUTRAL: 28, FORECAST_PESSIMIST: 25 },
+];
+const dummyBacktest = [
+  { PART_NO: '0888581844', MONTH: '2025-01', FORECAST: 19, ACTUAL: 20, BEST_MODEL: 'LINREG', HYBRID_ERROR: '5%' },
+  { PART_NO: '0888581844', MONTH: '2025-02', FORECAST: 24, ACTUAL: 25, BEST_MODEL: 'RF', HYBRID_ERROR: '4%' },
+  { PART_NO: '0888581844', MONTH: '2025-03', FORECAST: 22, ACTUAL: 23, BEST_MODEL: 'XGB', HYBRID_ERROR: '4%' },
+  { PART_NO: '0888581844', MONTH: '2025-04', FORECAST: 21, ACTUAL: 22, BEST_MODEL: 'ARIMA', HYBRID_ERROR: '5%' },
+  { PART_NO: '0999999999', MONTH: '2025-01', FORECAST: 9, ACTUAL: 10, BEST_MODEL: 'LINREG', HYBRID_ERROR: '10%' },
+  { PART_NO: '0999999999', MONTH: '2025-02', FORECAST: 11, ACTUAL: 12, BEST_MODEL: 'RF', HYBRID_ERROR: '8%' },
+  { PART_NO: '0999999999', MONTH: '2025-03', FORECAST: 14, ACTUAL: 15, BEST_MODEL: 'XGB', HYBRID_ERROR: '7%' },
+  { PART_NO: '0999999999', MONTH: '2025-04', FORECAST: 17, ACTUAL: 18, BEST_MODEL: 'ARIMA', HYBRID_ERROR: '6%' },
+];
+
+// Fungsi untuk mengisi dropdown bulan dan part number
+function populateDropdowns() {
+  // Real-time
+  const partnoInput = document.getElementById('partno-input');
+  const bulanDropdown = document.getElementById('bulan-dropdown');
+  // Backtest
+  const partnoBacktestInput = document.getElementById('partno-backtest-input');
+  const bulanBacktestDropdown = document.getElementById('bulan-backtest-dropdown');
+
+  // Ambil unique PART_NO dan MONTH dari data
+  const allPartNos = Array.from(new Set([
+    ...originalData.map(d => d.PART_NO),
+    ...realtimeData.map(d => d.PART_NO),
+    ...backtestData.map(d => d.PART_NO)
+  ]));
+  const allMonths = Array.from(new Set([
+    ...originalData.map(d => d.MONTH),
+    ...realtimeData.map(d => d.MONTH),
+    ...backtestData.map(d => d.MONTH)
+  ])).sort();
+
+  // Isi dropdown bulan
+  bulanDropdown.innerHTML = '<option value="">Semua Bulan</option>' + allMonths.map(m => `<option value="${m}">${m}</option>`).join('');
+  bulanBacktestDropdown.innerHTML = '<option value="">Semua Bulan</option>' + allMonths.map(m => `<option value="${m}">${m}</option>`).join('');
+
+  // (Opsional) autocomplete partno bisa dibuat di JS jika mau
+}
+
+// Fungsi render chart real-time
+function renderRealtimeDashboard() {
+  const partno = document.getElementById('partno-input').value.trim();
+  const bulan = document.getElementById('bulan-dropdown').value;
+  // Filter data
+  let data = realtimeData;
+  if (partno) data = data.filter(d => d.PART_NO === partno);
+  if (bulan) data = data.filter(d => d.MONTH === bulan);
+  // Bar chart: Optimist, Neutral, Pessimist
+  const labels = data.map(d => d.MONTH);
+  const optimist = data.map(d => d.FORECAST_OPTIMIST);
+  const neutral = data.map(d => d.FORECAST_NEUTRAL);
+  const pessimist = data.map(d => d.FORECAST_PESSIMIST);
+  // Destroy chart jika sudah ada
+  if (realtimeBarChart) realtimeBarChart.destroy();
+  const ctxBar = document.getElementById('realtime-bar-chart').getContext('2d');
+  realtimeBarChart = new Chart(ctxBar, {
+    type: 'bar',
+    data: {
+      labels: labels,
+      datasets: [
+        { label: 'Optimist', data: optimist, backgroundColor: 'rgba(54, 162, 235, 0.6)' },
+        { label: 'Neutral', data: neutral, backgroundColor: 'rgba(75, 192, 192, 0.4)' },
+        { label: 'Pessimist', data: pessimist, backgroundColor: 'rgba(255, 99, 132, 0.3)' }
+      ]
+    },
+    options: { responsive: true, plugins: { legend: { position: 'top' } } }
+  });
+  // Line chart: History (dari originalData)
+  let history = originalData;
+  if (partno) history = history.filter(d => d.PART_NO === partno);
+  const lineLabels = history.map(d => d.MONTH);
+  const lineData = history.map(d => d.ORIGINAL_SHIPPING_QTY);
+  if (realtimeLineChart) realtimeLineChart.destroy();
+  const ctxLine = document.getElementById('realtime-line-chart').getContext('2d');
+  realtimeLineChart = new Chart(ctxLine, {
+    type: 'line',
+    data: {
+      labels: lineLabels,
+      datasets: [
+        { label: 'History', data: lineData, borderColor: '#aaa', backgroundColor: 'rgba(200,200,200,0.1)', tension: 0.2 }
+      ]
+    },
+    options: { responsive: true, plugins: { legend: { position: 'top' } } }
+  });
+}
+
+// Fungsi render chart backtest
+function renderBacktestDashboard() {
+  const partno = document.getElementById('partno-backtest-input').value.trim();
+  const bulan = document.getElementById('bulan-backtest-dropdown').value;
+  // Filter data
+  let data = backtestData;
+  if (partno) data = data.filter(d => d.PART_NO === partno);
+  if (bulan) data = data.filter(d => d.MONTH === bulan);
+  // Line chart: Forecast vs Actual
+  const labels = data.map(d => d.MONTH);
+  const forecast = data.map(d => d.FORECAST);
+  const actual = data.map(d => d.ACTUAL);
+  if (backtestLineChart) backtestLineChart.destroy();
+  const ctxLine = document.getElementById('backtest-line-chart').getContext('2d');
+  backtestLineChart = new Chart(ctxLine, {
+    type: 'line',
+    data: {
+      labels: labels,
+      datasets: [
+        { label: 'Forecast', data: forecast, borderColor: '#2196f3', backgroundColor: 'rgba(33,150,243,0.1)', tension: 0.2 },
+        { label: 'Actual', data: actual, borderColor: '#aaa', backgroundColor: 'rgba(200,200,200,0.1)', tension: 0.2 }
+      ]
+    },
+    options: { responsive: true, plugins: { legend: { position: 'top' } } }
+  });
+  // Bar chart: Best Model count
+  const modelCounts = {};
+  data.forEach(d => { modelCounts[d.BEST_MODEL] = (modelCounts[d.BEST_MODEL] || 0) + 1; });
+  const modelLabels = Object.keys(modelCounts);
+  const modelData = Object.values(modelCounts);
+  if (backtestBarChart) backtestBarChart.destroy();
+  const ctxBar = document.getElementById('backtest-bar-chart').getContext('2d');
+  backtestBarChart = new Chart(ctxBar, {
+    type: 'bar',
+    data: {
+      labels: modelLabels,
+      datasets: [
+        { label: 'Best Model', data: modelData, backgroundColor: 'rgba(54, 162, 235, 0.6)' }
+      ]
+    },
+    options: { responsive: true, plugins: { legend: { display: false } } }
+  });
+}
+
+// Event listener input PartNo & Bulan
+function setupDashboardListeners() {
+  document.getElementById('partno-input').addEventListener('input', renderRealtimeDashboard);
+  document.getElementById('bulan-dropdown').addEventListener('change', renderRealtimeDashboard);
+  document.getElementById('partno-backtest-input').addEventListener('input', renderBacktestDashboard);
+  document.getElementById('bulan-backtest-dropdown').addEventListener('change', renderBacktestDashboard);
+}
+
 // Event listener untuk DOM loaded
 window.addEventListener('DOMContentLoaded', () => {
   if (processBtn) processBtn.disabled = false;
   updateProcessBtnState();
   console.log('DOMContentLoaded: script.js loaded, processBtn:', processBtn);
+  // Ganti dengan data dari backend nanti
+  originalData = dummyOriginal;
+  backtestData = dummyBacktest;
+  realtimeData = dummyRealtime;
+  populateDropdowns();
+  renderRealtimeDashboard();
+  renderBacktestDashboard();
+  setupDashboardListeners();
 });
 
 // Event listener untuk tombol proses forecast
@@ -158,7 +345,17 @@ if (processBtn && fileInput && statusDiv && progressBarContainer && progressBar 
         progressBarContainer.style.display = 'none';
         return;
       }
-      
+
+      // ===== INTEGRASI DASHBOARD DENGAN DATA BACKEND =====
+      if (data.original_df && data.forecast_df && data.real_time_forecast) {
+        originalData = data.original_df;
+        backtestData = data.forecast_df;
+        realtimeData = data.real_time_forecast;
+        populateDropdowns();
+        renderRealtimeDashboard();
+        renderBacktestDashboard();
+      }
+
       // Download file hasil otomatis
       const fileId = data.file_id;
       progressBar.style.width = '100%';
