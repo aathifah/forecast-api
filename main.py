@@ -11,6 +11,7 @@ from fastapi.staticfiles import StaticFiles
 import os
 import uuid
 import tempfile
+import numpy as np
 
 # Setup logging
 # Konfigurasi logging agar lebih detail, termasuk waktu dan nama logger
@@ -324,6 +325,10 @@ async def process_forecast_endpoint(file: UploadFile = File(...)):
             forecast_df.to_excel(writer, sheet_name='Backtest', index=False)
             real_time_forecast.to_excel(writer, sheet_name='RealTimeForecast', index=False)
         logger.info(f"Forecast Excel file created successfully at {output_path}.")
+        # Bersihkan NaN/inf di semua dataframe sebelum dikirim ke frontend
+        df_processed = df_processed.replace([np.inf, -np.inf], np.nan).fillna(0)
+        forecast_df = forecast_df.replace([np.inf, -np.inf], np.nan).fillna(0)
+        real_time_forecast = real_time_forecast.replace([np.inf, -np.inf], np.nan).fillna(0)
         # Return JSON for dashboard integration
         return {
             "status": "success",
