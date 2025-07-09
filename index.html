@@ -294,21 +294,21 @@
 </head>
 <body>
   <div class="bg-gradient"></div>
-  <div class="main-flex">
+  <div class="main-flex" style="justify-content: center; align-items: flex-start; min-height: 100vh; width: 100vw;">
     <div class="info-section">
-      <h1>Welcome to<br>Forecasting Parts</h1>
+      <h1>Welcome to<br>Forecasting Parts Website</h1>
       <p>
-        3cho File Sharing merupakan produk dari tugas project UAS kelompok 1 dari<br>
-        Tingkat 1 Rekayasa Keamanan Siber Echo pada Mata Kuliah Keamanan Aplikasi
+        Upload Dataset (Excel File) Anda<br>
+        dan Dapatkan Prediksi Permintaan Part Number Kamu di Bulan Mendatang
       </p>
     </div>
-    <div class="download-container centered-upload">
+    <div class="download-container centered-upload" style="margin: 80px 0 0 0; align-self: center;">
       <div class="download-title">
-        Download Hasil Forecast<br>(Excel, 2 Sheet: Backtest & RealTimeForecast)
+        Halo!<br>Upload dataset (.xlsx) history part number yang ingin kamu lakukan prediksi disini!
       </div>
       <form id="download-form" class="download-form" autocomplete="off">
         <input type="file" id="download-file-input" accept=".xlsx" required />
-        <button type="button" id="process-btn">Process Forecast Excel File</button>
+        <button type="button" id="process-btn">Forecast Excel File</button>
         <div id="download-progress-bar-container">
           <div id="download-progress-bar"></div>
           <span id="download-progress-label">Processing...</span>
