@@ -129,8 +129,8 @@
   width: 100vw;
   min-height: 100vh;
   display: flex;
-  align-items: center;
-  justify-content: center;
+  align-items: flex-start;
+  justify-content: flex-start;
   background: none;
   position: relative;
   z-index: 1;
@@ -139,21 +139,21 @@
 .main-flex-upload {
   display: flex;
   flex-direction: row;
-  align-items: center;
-  justify-content: center;
+  align-items: flex-start;
+  justify-content: flex-start;
   gap: 56px;
   width: 100%;
   max-width: 1200px;
   margin: 0 auto;
-  padding: 60px 32px;
+  padding: 0 0 0 0;
 }
 
 .download-container.centered-upload {
-  max-width: 500px;
-  width: 100%;
+  max-width: 400px;
   min-width: 320px;
-  margin: 0 auto;
-  padding: 48px 40px 40px 40px;
+  width: 100%;
+  margin: 100px 0 0 80px;
+  padding: 40px 32px 32px 32px;
   font-size: 1.15rem;
   border-radius: 18px;
   box-shadow: 0 8px 32px 0 rgba(31,38,135,0.18);
@@ -161,6 +161,14 @@
   display: flex;
   flex-direction: column;
   align-items: center;
+}
+
+.info-section {
+  margin-top: 60px;
+  margin-left: 60px;
+  align-items: flex-start;
+  text-align: left;
+  padding: 0;
 }
 
 @media (max-width: 1100px) {
@@ -203,14 +211,18 @@
     flex-direction: column;
     gap: 32px;
     padding: 32px 8vw;
+    align-items: center;
+    justify-content: center;
   }
   .info-section {
-    padding: 24px 0 0 0;
+    margin-top: 32px;
+    margin-left: 0;
     align-items: center;
     text-align: center;
+    padding: 0;
   }
   .download-container.centered-upload {
-    margin: 0 auto;
+    margin: 32px auto 0 auto;
     padding: 32px 12px 24px 12px;
     min-width: 0;
     max-width: 98vw;
