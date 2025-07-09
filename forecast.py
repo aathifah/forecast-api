@@ -293,6 +293,7 @@ def run_combined_forecast(df):
     df_processed = df.copy()
     # Robust parsing for MONTH column
     df_processed['MONTH'] = pd.to_datetime(df_processed['MONTH'], format='mixed')
+    logger.info(f"Data after parsing MONTH: {df_processed.shape}\n{df_processed.head(3)}")
     df_processed = df_processed.groupby(['PART_NO', 'MONTH'], as_index=False).agg({
         'ORIGINAL_SHIPPING_QTY': 'sum',
         'PART_NAME': 'first',
@@ -323,12 +324,13 @@ def run_combined_forecast(df):
     df_processed['SUM_LAG_6'] = df_processed[['LAG_1', 'LAG_2', 'LAG_3', 'LAG_4', 'LAG_5', 'LAG_6']].sum(axis=1)
     df_processed['GROWTH_RATE'] = df_processed['LAG_1'] / (df_processed['LAG_2'] + 1e-8)
 
-    # Tentukan 4 bulan terakhir sebagai bulan testing
+    # === PEMILIHAN BULAN BACKTEST SAMA DENGAN PROGRAM PENGUJIAN 5 ===
     all_months = df_processed['MONTH'].sort_values().unique()
-    valid_months = all_months[:-1]  # drop the latest month
-    test_months = pd.to_datetime(valid_months[-4:])
-
-    logger.info(f"Testing months: {[m.strftime('%Y-%m') for m in test_months]}")
+    if len(all_months) < 5:
+        raise Exception("Dataset tidak cukup untuk 4 bulan backtest + 1 bulan forecast")
+    # Ambil 4 bulan terakhir sebelum bulan terakhir di dataset
+    test_months = pd.to_datetime(all_months[-5:-1])
+    logger.info(f"Backtest test_months: {[m.strftime('%Y-%m') for m in test_months]}")
 
     # Lakukan forecasting untuk semua part
     part_list = df_processed['PART_NO'].unique()
@@ -346,12 +348,14 @@ def run_combined_forecast(df):
     return df_processed, forecast_df
 
 # Real-time Forecast Function
+
 def run_real_time_forecast(original_df, forecast_df):
     logger.info("Starting real-time forecast...")
     
     df_all = original_df.copy()
     # Robust parsing for MONTH column
     df_all['MONTH'] = pd.to_datetime(df_all['MONTH'], format='mixed')
+    logger.info(f"Data for real-time forecast: {df_all.shape}\n{df_all.head(3)}")
     
     df_best = forecast_df.copy()
     df_best['MONTH'] = pd.to_datetime(df_best['MONTH'], format='mixed')
@@ -378,13 +382,12 @@ def run_real_time_forecast(original_df, forecast_df):
     latest_model_map = model_best_rows.set_index('PART_NO')[['BEST_MODEL', 'HYBRID_ERROR']].to_dict(orient='index')
     
     all_months = sorted(df_all['MONTH'].unique())
+    if len(all_months) < 1:
+        raise Exception("Dataset tidak ada bulan valid")
     last_month = all_months[-1].replace(day=1)
-    
-    # Forecast untuk bulan terakhir di dataset + 3 bulan ke depan
+    # === PEMILIHAN BULAN FORECAST SAMA DENGAN PROGRAM PENGUJIAN 5 ===
     forecast_months = pd.date_range(start=last_month, periods=4, freq='MS')
-    
-    logger.info(f"Last month in dataset: {last_month.strftime('%Y-%m')}")
-    logger.info(f"Forecast months: {[m.strftime('%Y-%m') for m in forecast_months]}")
+    logger.info(f"RealTime forecast_months: {[m.strftime('%Y-%m') for m in forecast_months]}")
 
     part_list = df_all['PART_NO'].unique()
     
