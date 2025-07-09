@@ -1,5 +1,5 @@
 from fastapi import FastAPI, File, UploadFile, HTTPException, Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, FileResponse
 import pandas as pd
 import io
 import base64
@@ -25,8 +25,12 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# Serve static files (frontend)
-app.mount("/", StaticFiles(directory=".", html=True), name="static")
+# Serve static files (frontend) on /static
+app.mount("/static", StaticFiles(directory=".", html=True), name="static")
+
+@app.get("/")
+async def root():
+    return FileResponse("index.html")
 
 @app.get("/api/health")
 async def health_check():
