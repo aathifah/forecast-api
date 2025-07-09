@@ -175,13 +175,13 @@
     z-index: 10;
   }
   
-  /* Kotak upload di kanan tengah layar, space 3px dari kanan */
+  /* Kotak upload di kanan area konten, vertikal tengah area konten, kanan 0 */
   .download-container.centered-upload {
-    position: fixed;
-    top: 50%;
-    right: 3px;
-    transform: translateY(-50%);
-    margin: 0;
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    right: 0;
+    margin: auto 0;
     width: 23vw;
     height: 15vw;
     max-width: 320px;
