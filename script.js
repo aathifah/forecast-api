@@ -125,6 +125,13 @@ const progressLabel = document.getElementById('download-progress-label');
 
 let fileId = null;
 
+function updateProcessBtnState() {
+  processBtn.disabled = !fileInput.files.length;
+}
+
+fileInput.addEventListener('change', updateProcessBtnState);
+window.addEventListener('DOMContentLoaded', updateProcessBtnState);
+
 if (processBtn) {
   processBtn.addEventListener('click', async function() {
     statusDiv.textContent = '';
@@ -134,20 +141,22 @@ if (processBtn) {
       statusDiv.textContent = 'Pilih file Excel terlebih dahulu.';
       return;
     }
-    const formData = new FormData();
-    formData.append('file', fileInput.files[0]);
-    // Show progress bar
+    // Always show progress bar and status
     progressBarContainer.style.display = 'block';
     progressBar.style.width = '30%';
     progressLabel.textContent = 'Uploading...';
+    statusDiv.textContent = 'Uploading file...';
+    const formData = new FormData();
+    formData.append('file', fileInput.files[0]);
     try {
-      setTimeout(() => { progressBar.style.width = '60%'; progressLabel.textContent = 'Processing...'; }, 400);
+      setTimeout(() => { progressBar.style.width = '60%'; progressLabel.textContent = 'Processing...'; statusDiv.textContent = 'Processing forecast...'; }, 400);
       const response = await fetch('/process-forecast', {
         method: 'POST',
         body: formData
       });
       progressBar.style.width = '90%';
       progressLabel.textContent = 'Finalizing...';
+      statusDiv.textContent = 'Finalizing...';
       if (!response.ok) {
         const errText = await response.text();
         statusDiv.textContent = 'Gagal memproses: ' + errText;
