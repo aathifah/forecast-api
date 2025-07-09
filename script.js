@@ -114,3 +114,45 @@ document.getElementById('upload-form').addEventListener('submit', async function
     resultDiv.innerHTML = `<div class="error">Error: ${err.message}</div>`;
   }
 });
+
+// Download Forecast Excel
+const downloadForm = document.getElementById('download-form');
+if (downloadForm) {
+  downloadForm.addEventListener('submit', async function(e) {
+    e.preventDefault();
+    const fileInput = document.getElementById('download-file-input');
+    const statusDiv = document.getElementById('download-status');
+    statusDiv.textContent = 'Processing...';
+    if (!fileInput.files.length) {
+      statusDiv.textContent = 'Pilih file Excel terlebih dahulu.';
+      return;
+    }
+    const formData = new FormData();
+    formData.append('file', fileInput.files[0]);
+    try {
+      const response = await fetch('/download-forecast', {
+        method: 'POST',
+        body: formData
+      });
+      if (!response.ok) {
+        const errText = await response.text();
+        statusDiv.textContent = 'Gagal memproses: ' + errText;
+        return;
+      }
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'forecast_result.xlsx';
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(() => {
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+      }, 100);
+      statusDiv.textContent = 'Download berhasil!';
+    } catch (err) {
+      statusDiv.textContent = 'Gagal download: ' + err.message;
+    }
+  });
+}
