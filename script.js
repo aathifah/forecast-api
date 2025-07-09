@@ -143,6 +143,15 @@ function getLast12Months(monthsArr) {
   return sorted.slice(-12);
 }
 
+// Helper: filter data by month range (YYYY-MM)
+function filterByMonthRange(data, start, end) {
+  if (!start && !end) return data;
+  return data.filter(row => {
+    const m = (row.MONTH || '').slice(0, 7); // YYYY-MM
+    return (!start || m >= start) && (!end || m <= end);
+  });
+}
+
 // Fungsi untuk mengisi dropdown bulan real-time (hanya bulan real time forecast, multiple, dengan opsi Semua Bulan)
 function populateRealtimeDropdown() {
   const bulanDropdown = document.getElementById('bulan-dropdown');
@@ -188,15 +197,13 @@ function renderForecastCards(filteredData) {
 // Fungsi render chart real-time (line chart: 8 bulan terakhir history + 4 bulan real time forecast, 4 garis)
 function renderRealtimeDashboard() {
   const partno = document.getElementById('partno-input').value.trim();
-  const selectedMonths = getSelectedRealtimeMonths();
+  const start = document.getElementById('realtime-month-start').value;
+  const end = document.getElementById('realtime-month-end').value;
   // --- Data untuk cards & column chart ---
   let data = realtimeData;
   if (partno) data = data.filter(d => d.PART_NO === partno);
-  // Filter bulan (multiple, hanya untuk cards & bar chart)
-  let dataForCardAndBar = data;
-  if (selectedMonths.length > 0) {
-    dataForCardAndBar = data.filter(d => selectedMonths.includes(d.MONTH));
-  }
+  // Filter bulan (range, hanya untuk cards & bar chart)
+  let dataForCardAndBar = filterByMonthRange(data, start, end);
   // Render cards
   renderForecastCards(dataForCardAndBar);
   // Column chart: hanya bulan real time forecast, filter by part_no & bulan
@@ -378,20 +385,82 @@ function renderBacktestBarChart() {
 }
 
 function renderBacktestDashboard() {
-  renderBacktestCards();
-  renderBacktestLineChart();
-  renderBacktestBarChart();
+  const partno = document.getElementById('partno-backtest-input').value.trim();
+  const start = document.getElementById('backtest-month-start').value;
+  const end = document.getElementById('backtest-month-end').value;
+  let months = null; // not used anymore
+  let data = backtestData;
+  if (partno) {
+    data = data.filter(d => d.PART_NO && d.PART_NO.toLowerCase().includes(partno.toLowerCase()));
+  }
+  // Filter bulan (range, hanya untuk cards & bar chart)
+  let dataForCardAndBar = filterByMonthRange(data, start, end);
+  // Cards
+  const qty = dataForCardAndBar.reduce((sum, d) => sum + (Number(d.FORECAST) || 0), 0);
+  const errors = dataForCardAndBar.map(d => {
+    if (typeof d.HYBRID_ERROR === 'string' && d.HYBRID_ERROR.includes('%')) {
+      return parseFloat(d.HYBRID_ERROR.replace('%', ''));
+    }
+    return Number(d.HYBRID_ERROR) || 0;
+  });
+  const avgError = errors.length ? errors.reduce((a, b) => a + b, 0) / errors.length : 0;
+  document.getElementById('card-backtest-qty-value').textContent = qty.toLocaleString();
+  document.getElementById('card-backtest-error-value').textContent = avgError.toFixed(2) + '%';
+  // Bar chart: Best Model count
+  const modelCounts = {};
+  dataForCardAndBar.forEach(d => {
+    if (d.BEST_MODEL) modelCounts[d.BEST_MODEL] = (modelCounts[d.BEST_MODEL] || 0) + 1;
+  });
+  const modelLabels = Object.keys(modelCounts);
+  const modelData = Object.values(modelCounts);
+  if (backtestBarChart) backtestBarChart.destroy();
+  const ctxBar = document.getElementById('backtest-bar-chart').getContext('2d');
+  backtestBarChart = new Chart(ctxBar, {
+    type: 'bar',
+    data: {
+      labels: modelLabels,
+      datasets: [
+        { label: 'Best Model', data: modelData, backgroundColor: 'rgba(54, 162, 235, 0.6)' }
+      ]
+    },
+    options: { responsive: true, plugins: { legend: { display: false } } }
+  });
+  // Line chart: tetap filter partno saja, semua bulan
+  let lineData = backtestData;
+  if (partno) {
+    lineData = lineData.filter(d => d.PART_NO && d.PART_NO.toLowerCase().includes(partno.toLowerCase()));
+  }
+  const monthsLine = Array.from(new Set(lineData.map(d => d.MONTH))).sort((a, b) => new Date(a) - new Date(b));
+  const monthMap = {};
+  lineData.forEach(d => { monthMap[d.MONTH] = d; });
+  const forecast = monthsLine.map(m => monthMap[m] ? Number(monthMap[m].FORECAST) : null);
+  const actual = monthsLine.map(m => monthMap[m] ? Number(monthMap[m].ACTUAL) : null);
+  if (backtestLineChart) backtestLineChart.destroy();
+  const ctxLine = document.getElementById('backtest-line-chart').getContext('2d');
+  backtestLineChart = new Chart(ctxLine, {
+    type: 'line',
+    data: {
+      labels: monthsLine.map(m => m.replace(/T.*$/, '')),
+      datasets: [
+        { label: 'Forecast', data: forecast, borderColor: '#2196f3', backgroundColor: 'rgba(33,150,243,0.1)', tension: 0.2 },
+        { label: 'Actual', data: actual, borderColor: '#aaa', backgroundColor: 'rgba(200,200,200,0.1)', tension: 0.2 }
+      ]
+    },
+    options: { responsive: true, plugins: { legend: { position: 'top' } } }
+  });
 }
 
 function setupBacktestListeners() {
   document.getElementById('partno-backtest-input').addEventListener('input', renderBacktestDashboard);
-  document.getElementById('bulan-backtest-dropdown').addEventListener('change', renderBacktestDashboard);
+  document.getElementById('backtest-month-start').addEventListener('change', renderBacktestDashboard);
+  document.getElementById('backtest-month-end').addEventListener('change', renderBacktestDashboard);
 }
 
 // Event listener input PartNo & Bulan (multiple select)
 function setupDashboardListeners() {
   document.getElementById('partno-input').addEventListener('input', renderRealtimeDashboard);
-  document.getElementById('bulan-dropdown').addEventListener('change', renderRealtimeDashboard);
+  document.getElementById('realtime-month-start').addEventListener('change', renderRealtimeDashboard);
+  document.getElementById('realtime-month-end').addEventListener('change', renderRealtimeDashboard);
 }
 
 // Event listener untuk DOM loaded
@@ -403,8 +472,6 @@ window.addEventListener('DOMContentLoaded', () => {
   originalData = dummyOriginal;
   backtestData = dummyBacktest;
   realtimeData = dummyRealtime;
-  populateRealtimeDropdown();
-  populateBacktestDropdown();
   renderRealtimeDashboard();
   renderBacktestDashboard();
   setupDashboardListeners();
