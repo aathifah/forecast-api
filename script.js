@@ -152,6 +152,12 @@ function filterByMonthRange(data, start, end) {
   });
 }
 
+// Helper: konversi ke format YYYY-MM
+function toYearMonth(str) {
+  if (!str) return '';
+  return str.slice(0, 7);
+}
+
 // Fungsi untuk mengisi dropdown bulan real-time (hanya bulan real time forecast, multiple, dengan opsi Semua Bulan)
 function populateRealtimeDropdown() {
   const bulanDropdown = document.getElementById('bulan-dropdown');
@@ -212,7 +218,7 @@ function renderRealtimeDashboard() {
   // Render cards
   renderForecastCards(uniqueData);
   // Column chart: hanya bulan real time forecast, filter by part_no & bulan
-  const barLabels = uniqueData.map(d => d.MONTH.replace(/T.*$/, ''));
+  const barLabels = uniqueData.map(d => toYearMonth(d.MONTH));
   const optimist = uniqueData.map(d => d.FORECAST_OPTIMIST);
   const neutral = uniqueData.map(d => d.FORECAST_NEUTRAL);
   const pessimist = uniqueData.map(d => d.FORECAST_PESSIMIST);
@@ -241,13 +247,13 @@ function renderRealtimeDashboard() {
   const forecastMonths = Array.from(new Set(forecast.map(d => d.MONTH))).sort((a, b) => new Date(a) - new Date(b));
   const last4Forecast = forecastMonths.slice(-4);
   forecast = forecast.filter(d => last4Forecast.includes(d.MONTH));
-  // Gabungkan label bulan
-  const lineLabels = [...last8History, ...last4Forecast];
+  // Gabungkan label bulan, semua dalam format YYYY-MM
+  const lineLabels = [...last8History, ...last4Forecast].map(toYearMonth);
   // Data
-  const historyMap = Object.fromEntries(history.map(d => [d.MONTH, d.ORIGINAL_SHIPPING_QTY]));
-  const optimistMap = Object.fromEntries(forecast.map(d => [d.MONTH, d.FORECAST_OPTIMIST]));
-  const neutralMap = Object.fromEntries(forecast.map(d => [d.MONTH, d.FORECAST_NEUTRAL]));
-  const pessimistMap = Object.fromEntries(forecast.map(d => [d.MONTH, d.FORECAST_PESSIMIST]));
+  const historyMap = Object.fromEntries(history.map(d => [toYearMonth(d.MONTH), d.ORIGINAL_SHIPPING_QTY]));
+  const optimistMap = Object.fromEntries(forecast.map(d => [toYearMonth(d.MONTH), d.FORECAST_OPTIMIST]));
+  const neutralMap = Object.fromEntries(forecast.map(d => [toYearMonth(d.MONTH), d.FORECAST_NEUTRAL]));
+  const pessimistMap = Object.fromEntries(forecast.map(d => [toYearMonth(d.MONTH), d.FORECAST_PESSIMIST]));
   // Datasets
   const lineHistory = lineLabels.map(m => historyMap[m] || null);
   const lineOptimist = lineLabels.map(m => optimistMap[m] || null);
@@ -258,7 +264,7 @@ function renderRealtimeDashboard() {
   realtimeLineChart = new Chart(ctxLine, {
     type: 'line',
     data: {
-      labels: lineLabels.map(m => m.replace(/T.*$/, '')),
+      labels: lineLabels,
       datasets: [
         { label: 'History', data: lineHistory, borderColor: '#aaa', backgroundColor: 'rgba(200,200,200,0.1)', tension: 0.2 },
         { label: 'Optimist', data: lineOptimist, borderColor: '#7c4dff', backgroundColor: 'rgba(124,77,255,0.1)', tension: 0.2 },
