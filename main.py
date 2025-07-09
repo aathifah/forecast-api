@@ -324,7 +324,14 @@ async def process_forecast_endpoint(file: UploadFile = File(...)):
             forecast_df.to_excel(writer, sheet_name='Backtest', index=False)
             real_time_forecast.to_excel(writer, sheet_name='RealTimeForecast', index=False)
         logger.info(f"Forecast Excel file created successfully at {output_path}.")
-        return {"status": "success", "file_id": file_id}
+        # Return JSON for dashboard integration
+        return {
+            "status": "success",
+            "file_id": file_id,
+            "original_df": df_processed.to_dict(orient="records"),
+            "forecast_df": forecast_df.to_dict(orient="records"),
+            "real_time_forecast": real_time_forecast.to_dict(orient="records")
+        }
     except HTTPException:
         raise
     except pd.errors.EmptyDataError:
