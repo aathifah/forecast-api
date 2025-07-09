@@ -115,6 +115,7 @@ document.getElementById('upload-form').addEventListener('submit', async function
   }
 });
 
+console.log('script.js loaded');
 const processBtn = document.getElementById('process-btn');
 const fileInput = document.getElementById('download-file-input');
 const statusDiv = document.getElementById('download-status');
@@ -122,17 +123,33 @@ const progressBarContainer = document.getElementById('download-progress-bar-cont
 const progressBar = document.getElementById('download-progress-bar');
 const progressLabel = document.getElementById('download-progress-label');
 
-function updateProcessBtnState() {
-  processBtn.disabled = !fileInput.files.length;
+if (!processBtn) {
+  alert('Tombol proses tidak ditemukan di HTML!');
+  console.error('processBtn is null');
+}
+if (!fileInput) {
+  alert('Input file tidak ditemukan di HTML!');
+  console.error('fileInput is null');
+}
+if (!statusDiv || !progressBarContainer || !progressBar || !progressLabel) {
+  alert('Ada elemen status/progress yang tidak ditemukan di HTML!');
+  console.error('status/progress bar element is null');
 }
 
-fileInput.addEventListener('change', updateProcessBtnState);
+function updateProcessBtnState() {
+  if (processBtn && fileInput) {
+    processBtn.disabled = !fileInput.files.length;
+  }
+}
+
+if (fileInput) fileInput.addEventListener('change', updateProcessBtnState);
 window.addEventListener('DOMContentLoaded', () => {
-  processBtn.disabled = false;
+  if (processBtn) processBtn.disabled = false;
   updateProcessBtnState();
+  console.log('DOMContentLoaded: script.js loaded, processBtn:', processBtn);
 });
 
-if (processBtn) {
+if (processBtn && fileInput && statusDiv && progressBarContainer && progressBar && progressLabel) {
   processBtn.disabled = false;
   processBtn.addEventListener('click', async function() {
     statusDiv.textContent = '';
