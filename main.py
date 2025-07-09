@@ -1,13 +1,15 @@
-from fastapi import FastAPI, File, UploadFile, HTTPException, Request
+from fastapi import FastAPI, File, UploadFile, HTTPException, Request, Query
 from fastapi.responses import JSONResponse, FileResponse, StreamingResponse
 import pandas as pd
 import io
 import base64
 from datetime import datetime
 import logging
-from pydantic import BaseModel # Import BaseModel dari pydantic
+from pydantic import BaseModel
 from forecast_service import process_forecast, run_real_time_forecast, run_combined_forecast
 from fastapi.staticfiles import StaticFiles
+import os
+import uuid
 
 # Setup logging
 # Konfigurasi logging agar lebih detail, termasuk waktu dan nama logger
@@ -278,10 +280,10 @@ async def forecast_raw(request: Request):
             detail=f"Internal server error processing raw Excel file: {str(e)}"
         )
 
-@app.post("/download-forecast")
-async def download_forecast_endpoint(file: UploadFile = File(...)):
+@app.post("/process-forecast")
+async def process_forecast_endpoint(file: UploadFile = File(...)):
     try:
-        logger.info(f"Received file upload request for download: {file.filename}, content_type: {file.content_type}")
+        logger.info(f"Received file upload request for process: {file.filename}, content_type: {file.content_type}")
         if not file.filename.endswith((".xlsx", ".xls")):
             logger.warning(f"Invalid file format received: {file.filename}")
             raise HTTPException(
@@ -296,7 +298,7 @@ async def download_forecast_endpoint(file: UploadFile = File(...)):
                 detail="File Excel tidak boleh kosong."
             )
         df = pd.read_excel(io.BytesIO(content), engine="openpyxl")
-        logger.info(f"File '{file.filename}' loaded successfully for download. Shape: {df.shape}")
+        logger.info(f"File '{file.filename}' loaded successfully for process. Shape: {df.shape}")
         required_columns = ['MONTH', 'PART_NO', 'ORIGINAL_SHIPPING_QTY']
         missing_columns = [col for col in required_columns if col not in df.columns]
         if missing_columns:
@@ -305,23 +307,17 @@ async def download_forecast_endpoint(file: UploadFile = File(...)):
                 status_code=400,
                 detail=f"Kolom yang diperlukan tidak ditemukan: {missing_columns}"
             )
-        logger.info("Starting forecast processing for download...")
+        logger.info("Starting forecast processing for process...")
         df_processed, forecast_df = run_combined_forecast(df)
         real_time_forecast = run_real_time_forecast(df_processed, forecast_df)
         # Buat file Excel hasil
-        output = io.BytesIO()
-        with pd.ExcelWriter(output, engine='openpyxl') as writer:
+        file_id = str(uuid.uuid4())
+        output_path = f"/tmp/forecast_result_{file_id}.xlsx"
+        with pd.ExcelWriter(output_path, engine='openpyxl') as writer:
             forecast_df.to_excel(writer, sheet_name='Backtest', index=False)
             real_time_forecast.to_excel(writer, sheet_name='RealTimeForecast', index=False)
-        output.seek(0)
-        logger.info("Forecast Excel file created successfully.")
-        return StreamingResponse(
-            output,
-            media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-            headers={
-                "Content-Disposition": f"attachment; filename=forecast_result_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
-            }
-        )
+        logger.info(f"Forecast Excel file created successfully at {output_path}.")
+        return {"status": "success", "file_id": file_id}
     except HTTPException:
         raise
     except pd.errors.EmptyDataError:
@@ -330,6 +326,26 @@ async def download_forecast_endpoint(file: UploadFile = File(...)):
             status_code=400,
             detail="File Excel kosong atau tidak valid."
         )
+    except Exception as e:
+        logger.error(f"Unexpected error in /process-forecast endpoint: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Internal server error processing file: {str(e)}"
+        )
+
+@app.get("/download-forecast")
+async def download_forecast_endpoint(file_id: str = Query(...)):
+    try:
+        output_path = f"/tmp/forecast_result_{file_id}.xlsx"
+        if not os.path.exists(output_path):
+            raise HTTPException(status_code=404, detail="File hasil tidak ditemukan atau sudah expired.")
+        return FileResponse(
+            output_path,
+            media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            filename=f"forecast_result_{file_id}.xlsx"
+        )
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Unexpected error in /download-forecast endpoint: {str(e)}", exc_info=True)
         raise HTTPException(
