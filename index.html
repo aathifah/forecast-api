@@ -244,6 +244,21 @@
     .centered-upload {
       margin: 100px auto 0 auto;
     }
+    .month-range-group {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      margin-left: 20px; /* Adjust as needed */
+    }
+    .month-range-input {
+      width: 120px; /* Adjust as needed */
+      padding: 8px;
+      border-radius: 6px;
+      border: 1px solid #bfc9d1;
+      background: #181828;
+      color: #fff;
+      font-size: 0.95em;
+    }
     @media (max-width: 900px) {
       .main-flex {
         flex-direction: column;
@@ -310,7 +325,13 @@
     <div class="dashboard-content" id="realtime-dashboard-content">
       <div class="dashboard-filters">
         <input type="text" id="partno-input" placeholder="Masukkan Part Number" class="slicer-input">
-        <select id="bulan-dropdown" class="slicer-dropdown" multiple></select>
+        <div class="month-range-group">
+          <label for="realtime-month-start" style="color:#bfc9d1;font-size:0.95em;margin-bottom:2px;">MONTH</label>
+          <div style="display:flex;gap:8px;">
+            <input type="month" id="realtime-month-start" class="month-range-input">
+            <input type="month" id="realtime-month-end" class="month-range-input">
+          </div>
+        </div>
       </div>
       <section id="realtime-dashboard">
         <h2 style="color:#fff;">Real-Time Forecast</h2>
@@ -337,7 +358,13 @@
     <div class="dashboard-content" id="backtest-dashboard-content">
       <div class="dashboard-filters">
         <input type="text" id="partno-backtest-input" placeholder="Masukkan Part Number" class="slicer-input">
-        <select id="bulan-backtest-dropdown" class="slicer-dropdown" multiple></select>
+        <div class="month-range-group">
+          <label for="backtest-month-start" style="color:#bfc9d1;font-size:0.95em;margin-bottom:2px;">MONTH</label>
+          <div style="display:flex;gap:8px;">
+            <input type="month" id="backtest-month-start" class="month-range-input">
+            <input type="month" id="backtest-month-end" class="month-range-input">
+          </div>
+        </div>
       </div>
       <h2 style="color:#fff;">Backtesting</h2>
       <div class="cards-row">
