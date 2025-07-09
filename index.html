@@ -320,16 +320,28 @@
   </div>
 
   <!-- Section: Backtesting Dashboard -->
-  <section id="backtest-dashboard" style="margin-top:60px; max-width:1200px; margin-left:auto; margin-right:auto;">
-    <h2 style="color:#fff;">Backtesting</h2>
-    <div style="display:flex; gap:24px; align-items:center; margin-bottom:18px;">
-      <input type="text" id="partno-backtest-input" placeholder="Masukkan Part Number" style="padding:8px; border-radius:6px; border:1px solid #bfc9d1; min-width:180px;">
-      <select id="bulan-backtest-dropdown" style="padding:8px; border-radius:6px; border:1px solid #bfc9d1; min-width:140px;"></select>
+  <div class="dashboard-flex" id="backtest-dashboard-flex" style="margin-top:60px; max-width:1200px; margin-left:auto; margin-right:auto;">
+    <div class="slicer-panel" id="backtest-slicer-panel">
+      <input type="text" id="partno-backtest-input" placeholder="Masukkan Part Number" class="slicer-input">
+      <select id="bulan-backtest-dropdown" class="slicer-dropdown" multiple></select>
     </div>
-    <div id="backtest-charts">
-      <canvas id="backtest-line-chart" height="100"></canvas>
-      <canvas id="backtest-bar-chart" height="80" style="margin-top:32px;"></canvas>
+    <div class="dashboard-content" id="backtest-dashboard-content">
+      <h2 style="color:#fff;">Backtesting</h2>
+      <div class="cards-row">
+        <div class="forecast-card" id="card-backtest-qty">
+          <div class="card-title">Forecast QTY</div>
+          <div class="card-value" id="card-backtest-qty-value">0</div>
+        </div>
+        <div class="forecast-card" id="card-backtest-error">
+          <div class="card-title">Average Error</div>
+          <div class="card-value" id="card-backtest-error-value">0</div>
+        </div>
+      </div>
+      <div id="backtest-charts">
+        <canvas id="backtest-line-chart" height="100"></canvas>
+        <canvas id="backtest-bar-chart" height="80" style="margin-top:32px;"></canvas>
+      </div>
     </div>
-  </section>
+  </div>
 </body>
 </html>
