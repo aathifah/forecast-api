@@ -186,6 +186,38 @@ def hybrid_error(actual, forecast):
     else:
         return abs((actual - forecast) / actual)
 
+def parse_month_column(series):
+    import pandas as pd
+    # Jika sudah datetime, return
+    if pd.api.types.is_datetime64_any_dtype(series):
+        return series
+    # Jika int (202501), parse dengan %Y%m
+    if pd.api.types.is_integer_dtype(series):
+        return pd.to_datetime(series.astype(str), format='%Y%m', errors='coerce')
+    # Jika float (202501.0), parse ke int lalu ke str
+    if pd.api.types.is_float_dtype(series):
+        return pd.to_datetime(series.astype(int).astype(str), format='%Y%m', errors='coerce')
+    # Jika string
+    s = series.astype(str)
+    # Coba format %Y%m
+    dt = pd.to_datetime(s, format='%Y%m', errors='coerce')
+    if dt.notna().all():
+        return dt
+    # Coba format %Y-%m
+    dt = pd.to_datetime(s, format='%Y-%m', errors='coerce')
+    if dt.notna().all():
+        return dt
+    # Coba format %Y/%m
+    dt = pd.to_datetime(s, format='%Y/%m', errors='coerce')
+    if dt.notna().all():
+        return dt
+    # Coba format %Y-%m-%d
+    dt = pd.to_datetime(s, format='%Y-%m-%d', errors='coerce')
+    if dt.notna().all():
+        return dt
+    # Fallback: auto
+    return pd.to_datetime(s, errors='coerce')
+
 # Main Forecast per PART_NO
 def process_part(part, part_df, test_months):
     part_results = []
@@ -292,7 +324,7 @@ def run_combined_forecast(df):
     # Proses dataset
     df_processed = df.copy()
     # Robust parsing for MONTH column
-    df_processed['MONTH'] = pd.to_datetime(df_processed['MONTH'], format='mixed')
+    df_processed['MONTH'] = parse_month_column(df_processed['MONTH'])
     logger.info(f"Data after parsing MONTH: {df_processed.shape}\n{df_processed.head(3)}")
     df_processed = df_processed.groupby(['PART_NO', 'MONTH'], as_index=False).agg({
         'ORIGINAL_SHIPPING_QTY': 'sum',
@@ -354,7 +386,7 @@ def run_real_time_forecast(original_df, forecast_df):
     
     df_all = original_df.copy()
     # Robust parsing for MONTH column
-    df_all['MONTH'] = pd.to_datetime(df_all['MONTH'], format='mixed')
+    df_all['MONTH'] = parse_month_column(df_all['MONTH'])
     logger.info(f"Data for real-time forecast: {df_all.shape}\n{df_all.head(3)}")
     
     df_best = forecast_df.copy()
