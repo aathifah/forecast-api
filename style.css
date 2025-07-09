@@ -1,11 +1,147 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
-</head>
-<body>
-    
-</body>
-</html>
+/* Container utama dashboard */
+.dashboard-2col {
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  align-items: flex-start;
+  gap: 64px;
+  padding: 60px 40px 60px 40px;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.dashboard-content {
+  background: rgba(20,20,30,0.98);
+  border-radius: 18px;
+  box-shadow: 0 8px 32px 0 rgba(31,38,135,0.18);
+  padding: 48px 40px 40px 40px;
+  min-width: 440px;
+  max-width: 650px;
+  flex: 1 1 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin: 0 32px;
+}
+
+.dashboard-filters {
+  display: flex;
+  flex-direction: row;
+  gap: 24px;
+  margin-bottom: 24px;
+  align-items: center;
+  width: 100%;
+  justify-content: flex-start;
+}
+
+.month-range-group {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  margin-left: 20px;
+}
+.month-range-input {
+  width: 120px;
+  padding: 8px;
+  border-radius: 6px;
+  border: 1px solid #bfc9d1;
+  background: #181828;
+  color: #fff;
+  font-size: 0.95em;
+}
+
+.centered-upload {
+  margin: 80px auto 0 auto !important;
+  max-width: 650px !important;
+  min-width: 350px;
+  padding: 48px 40px 40px 40px !important;
+  font-size: 1.15rem;
+  left: 0;
+  right: 0;
+  position: relative;
+  box-shadow: 0 8px 32px 0 rgba(31,38,135,0.18);
+}
+.download-container {
+  max-width: 650px;
+  min-width: 350px;
+  padding: 48px 40px 40px 40px;
+  font-size: 1.15rem;
+  margin: 80px 60px 0 0;
+  border-radius: 18px;
+}
+.download-form input[type="file"], .download-form button {
+  font-size: 1.1rem;
+  padding: 14px 18px;
+}
+
+.cards-row {
+  display: flex;
+  flex-direction: row;
+  gap: 32px;
+  justify-content: center;
+  margin-bottom: 32px;
+  margin-top: 12px;
+}
+.forecast-card {
+  background: linear-gradient(90deg, #101018 60%, #23234a 100%);
+  border: 2px solid #3578e5;
+  border-radius: 18px;
+  min-width: 180px;
+  min-height: 90px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  box-shadow: 0 2px 12px 0 rgba(31,38,135,0.10);
+}
+.card-title {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin-bottom: 6px;
+  color: #6ec1e4;
+}
+.card-value {
+  font-size: 2.2rem;
+  font-weight: 800;
+  letter-spacing: 1px;
+  color: #fff;
+}
+
+@media (max-width: 1100px) {
+  .dashboard-2col {
+    flex-direction: column;
+    align-items: center;
+    gap: 32px;
+    padding: 30px 0 30px 0;
+  }
+  .dashboard-content {
+    margin: 0 auto;
+    min-width: unset;
+    max-width: 98vw;
+  }
+}
+@media (max-width: 900px) {
+  .dashboard-2col {
+    flex-direction: column;
+    align-items: center;
+    padding: 0 10vw;
+    gap: 24px;
+  }
+  .dashboard-content {
+    max-width: 98vw;
+    padding: 18px 6vw 18px 6vw;
+    min-width: unset;
+  }
+  .dashboard-filters {
+    flex-direction: column;
+    gap: 10px;
+  }
+  .cards-row {
+    flex-direction: column;
+    gap: 18px;
+  }
+  .centered-upload {
+    margin: 40px auto 0 auto !important;
+  }
+}
