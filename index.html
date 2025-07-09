@@ -73,6 +73,33 @@
     .download-form button:hover {
       background: #285bb5;
     }
+    #download-progress-bar-container {
+      width: 100%;
+      background: #e3e8ee;
+      border-radius: 8px;
+      height: 22px;
+      margin-bottom: 10px;
+      display: none;
+      position: relative;
+      overflow: hidden;
+    }
+    #download-progress-bar {
+      height: 100%;
+      background: linear-gradient(90deg, #3578e5 60%, #6ec1e4 100%);
+      width: 0%;
+      border-radius: 8px 0 0 8px;
+      transition: width 0.5s cubic-bezier(.4,2,.6,1);
+    }
+    #download-progress-label {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%,-50%);
+      color: #2a3b4c;
+      font-size: 0.95em;
+      font-weight: 500;
+      letter-spacing: 0.02em;
+    }
     #download-status {
       margin-top: 10px;
       color: #3578e5;
@@ -95,6 +122,10 @@
     </div>
     <form id="download-form" class="download-form">
       <input type="file" id="download-file-input" accept=".xlsx,.xls" required />
+      <div id="download-progress-bar-container">
+        <div id="download-progress-bar"></div>
+        <span id="download-progress-label">Processing...</span>
+      </div>
       <button type="submit">Download Forecast Excel</button>
     </form>
     <div id="download-status"></div>
