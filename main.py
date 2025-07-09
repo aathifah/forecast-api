@@ -53,12 +53,12 @@ async def health_check():
 async def forecast_endpoint(file: UploadFile = File(...)):
     try:
         logger.info(f"Received file upload request for: {file.filename}, content_type: {file.content_type}")
-        # Validasi tipe file
-        if not file.filename.endswith((".xlsx", ".xls")):
+        # Validasi tipe file - hanya .xlsx yang diterima
+        if not file.filename.lower().endswith(".xlsx"):
             logger.warning(f"Invalid file format received: {file.filename}")
             raise HTTPException(
                 status_code=400, 
-                detail="File harus berformat Excel (.xlsx atau .xls)"
+                detail="Tipe File Kamu Bukan Excel. Pastikan File Tipe Excel Saja yang Kamu Unggah!"
             )
         content = await file.read()
         if not content:
@@ -290,11 +290,12 @@ async def forecast_raw(request: Request):
 async def process_forecast_endpoint(file: UploadFile = File(...)):
     try:
         logger.info(f"Received file upload request for process: {file.filename}, content_type: {file.content_type}")
-        if not file.filename.endswith((".xlsx", ".xls")):
+        # Validasi tipe file - hanya .xlsx yang diterima
+        if not file.filename.lower().endswith(".xlsx"):
             logger.warning(f"Invalid file format received: {file.filename}")
             raise HTTPException(
                 status_code=400, 
-                detail="File harus berformat Excel (.xlsx atau .xls)"
+                detail="Tipe File Kamu Bukan Excel. Pastikan File Tipe Excel Saja yang Kamu Unggah!"
             )
         content = await file.read()
         if not content:
