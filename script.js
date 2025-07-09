@@ -204,13 +204,18 @@ function renderRealtimeDashboard() {
   if (partno) data = data.filter(d => d.PART_NO === partno);
   // Filter bulan (range, hanya untuk cards & bar chart)
   let dataForCardAndBar = filterByMonthRange(data, start, end);
+  // Pastikan hanya 1 data per bulan (ambil data terakhir jika duplikat)
+  const monthMap = {};
+  dataForCardAndBar.forEach(d => { monthMap[d.MONTH] = d; });
+  const uniqueMonths = Object.keys(monthMap).sort((a, b) => new Date(a) - new Date(b));
+  const uniqueData = uniqueMonths.map(m => monthMap[m]);
   // Render cards
-  renderForecastCards(dataForCardAndBar);
+  renderForecastCards(uniqueData);
   // Column chart: hanya bulan real time forecast, filter by part_no & bulan
-  const barLabels = dataForCardAndBar.map(d => d.MONTH.replace(/T.*$/, ''));
-  const optimist = dataForCardAndBar.map(d => d.FORECAST_OPTIMIST);
-  const neutral = dataForCardAndBar.map(d => d.FORECAST_NEUTRAL);
-  const pessimist = dataForCardAndBar.map(d => d.FORECAST_PESSIMIST);
+  const barLabels = uniqueData.map(d => d.MONTH.replace(/T.*$/, ''));
+  const optimist = uniqueData.map(d => d.FORECAST_OPTIMIST);
+  const neutral = uniqueData.map(d => d.FORECAST_NEUTRAL);
+  const pessimist = uniqueData.map(d => d.FORECAST_PESSIMIST);
   if (realtimeBarChart) realtimeBarChart.destroy();
   const ctxBar = document.getElementById('realtime-bar-chart').getContext('2d');
   realtimeBarChart = new Chart(ctxBar, {
