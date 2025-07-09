@@ -115,17 +115,21 @@ document.getElementById('upload-form').addEventListener('submit', async function
   }
 });
 
-// Download Forecast Excel
-const downloadForm = document.getElementById('download-form');
-if (downloadForm) {
-  downloadForm.addEventListener('submit', async function(e) {
-    e.preventDefault();
-    const fileInput = document.getElementById('download-file-input');
-    const statusDiv = document.getElementById('download-status');
-    const progressBarContainer = document.getElementById('download-progress-bar-container');
-    const progressBar = document.getElementById('download-progress-bar');
-    const progressLabel = document.getElementById('download-progress-label');
+const processBtn = document.getElementById('process-btn');
+const downloadBtn = document.getElementById('download-btn');
+const fileInput = document.getElementById('download-file-input');
+const statusDiv = document.getElementById('download-status');
+const progressBarContainer = document.getElementById('download-progress-bar-container');
+const progressBar = document.getElementById('download-progress-bar');
+const progressLabel = document.getElementById('download-progress-label');
+
+let fileId = null;
+
+if (processBtn) {
+  processBtn.addEventListener('click', async function() {
     statusDiv.textContent = '';
+    downloadBtn.disabled = true;
+    fileId = null;
     if (!fileInput.files.length) {
       statusDiv.textContent = 'Pilih file Excel terlebih dahulu.';
       return;
@@ -138,7 +142,7 @@ if (downloadForm) {
     progressLabel.textContent = 'Uploading...';
     try {
       setTimeout(() => { progressBar.style.width = '60%'; progressLabel.textContent = 'Processing...'; }, 400);
-      const response = await fetch('/download-forecast', {
+      const response = await fetch('/process-forecast', {
         method: 'POST',
         body: formData
       });
@@ -150,9 +154,44 @@ if (downloadForm) {
         progressBarContainer.style.display = 'none';
         return;
       }
-      const blob = await response.blob();
+      const data = await response.json();
+      if (data.status !== 'success' || !data.file_id) {
+        statusDiv.textContent = 'Gagal proses: ' + (data.message || 'Unknown error');
+        progressBarContainer.style.display = 'none';
+        return;
+      }
+      fileId = data.file_id;
       progressBar.style.width = '100%';
-      progressLabel.textContent = 'Download...';
+      progressLabel.textContent = 'Forecast Selesai';
+      statusDiv.textContent = 'Forecast Selesai. Silakan download file hasil.';
+      downloadBtn.disabled = false;
+      setTimeout(() => {
+        progressBarContainer.style.display = 'none';
+        progressBar.style.width = '0%';
+        progressLabel.textContent = '';
+      }, 1200);
+    } catch (err) {
+      progressBarContainer.style.display = 'none';
+      statusDiv.textContent = 'Gagal proses: ' + err.message;
+    }
+  });
+}
+
+if (downloadBtn) {
+  downloadBtn.addEventListener('click', async function() {
+    if (!fileId) {
+      statusDiv.textContent = 'File hasil belum tersedia.';
+      return;
+    }
+    statusDiv.textContent = 'Mengunduh file hasil...';
+    try {
+      const response = await fetch(`/download-forecast?file_id=${encodeURIComponent(fileId)}`);
+      if (!response.ok) {
+        const errText = await response.text();
+        statusDiv.textContent = 'Gagal download: ' + errText;
+        return;
+      }
+      const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -162,13 +201,9 @@ if (downloadForm) {
       setTimeout(() => {
         window.URL.revokeObjectURL(url);
         document.body.removeChild(a);
-        progressBarContainer.style.display = 'none';
-        progressBar.style.width = '0%';
-        progressLabel.textContent = '';
-      }, 800);
+      }, 100);
       statusDiv.textContent = 'Download berhasil!';
     } catch (err) {
-      progressBarContainer.style.display = 'none';
       statusDiv.textContent = 'Gagal download: ' + err.message;
     }
   });
