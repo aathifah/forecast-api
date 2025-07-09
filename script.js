@@ -122,24 +122,37 @@ if (downloadForm) {
     e.preventDefault();
     const fileInput = document.getElementById('download-file-input');
     const statusDiv = document.getElementById('download-status');
-    statusDiv.textContent = 'Processing...';
+    const progressBarContainer = document.getElementById('download-progress-bar-container');
+    const progressBar = document.getElementById('download-progress-bar');
+    const progressLabel = document.getElementById('download-progress-label');
+    statusDiv.textContent = '';
     if (!fileInput.files.length) {
       statusDiv.textContent = 'Pilih file Excel terlebih dahulu.';
       return;
     }
     const formData = new FormData();
     formData.append('file', fileInput.files[0]);
+    // Show progress bar
+    progressBarContainer.style.display = 'block';
+    progressBar.style.width = '30%';
+    progressLabel.textContent = 'Uploading...';
     try {
+      setTimeout(() => { progressBar.style.width = '60%'; progressLabel.textContent = 'Processing...'; }, 400);
       const response = await fetch('/download-forecast', {
         method: 'POST',
         body: formData
       });
+      progressBar.style.width = '90%';
+      progressLabel.textContent = 'Finalizing...';
       if (!response.ok) {
         const errText = await response.text();
         statusDiv.textContent = 'Gagal memproses: ' + errText;
+        progressBarContainer.style.display = 'none';
         return;
       }
       const blob = await response.blob();
+      progressBar.style.width = '100%';
+      progressLabel.textContent = 'Download...';
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -149,9 +162,13 @@ if (downloadForm) {
       setTimeout(() => {
         window.URL.revokeObjectURL(url);
         document.body.removeChild(a);
-      }, 100);
+        progressBarContainer.style.display = 'none';
+        progressBar.style.width = '0%';
+        progressLabel.textContent = '';
+      }, 800);
       statusDiv.textContent = 'Download berhasil!';
     } catch (err) {
+      progressBarContainer.style.display = 'none';
       statusDiv.textContent = 'Gagal download: ' + err.message;
     }
   });
