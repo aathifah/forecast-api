@@ -151,6 +151,80 @@
       background-color: rgba(53, 120, 229, 0.1);
       border: 1px solid rgba(53, 120, 229, 0.3);
     }
+    .dashboard-flex {
+      display: flex;
+      flex-direction: row;
+      justify-content: center;
+      align-items: flex-start;
+      width: 100vw;
+      margin-top: 40px;
+    }
+    .slicer-panel {
+      flex: 0 0 260px;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+      align-items: flex-start;
+      margin-right: 40px;
+      margin-top: 20px;
+    }
+    .slicer-input, .slicer-dropdown {
+      padding: 10px 14px;
+      border-radius: 8px;
+      border: 1px solid #bfc9d1;
+      font-size: 1rem;
+      min-width: 180px;
+      background: #181828;
+      color: #fff;
+    }
+    .slicer-dropdown {
+      min-width: 200px;
+      height: 44px;
+    }
+    .dashboard-content {
+      flex: 1 1 0;
+      max-width: 700px;
+      background: rgba(20,20,30,0.98);
+      border-radius: 18px;
+      box-shadow: 0 8px 32px 0 rgba(31,38,135,0.18);
+      padding: 32px 32px 32px 32px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .cards-row {
+      display: flex;
+      flex-direction: row;
+      gap: 32px;
+      justify-content: center;
+      margin-bottom: 32px;
+      margin-top: 12px;
+    }
+    .forecast-card {
+      background: linear-gradient(90deg, #101018 60%, #23234a 100%);
+      border: 2px solid #3578e5;
+      border-radius: 18px;
+      min-width: 180px;
+      min-height: 90px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      box-shadow: 0 2px 12px 0 rgba(31,38,135,0.10);
+    }
+    .card-title {
+      font-size: 1.1rem;
+      font-weight: 600;
+      margin-bottom: 6px;
+      color: #6ec1e4;
+    }
+    .card-value {
+      font-size: 2.2rem;
+      font-weight: 800;
+      letter-spacing: 1px;
+      color: #fff;
+    }
     @media (max-width: 900px) {
       .main-flex {
         flex-direction: column;
@@ -163,6 +237,24 @@
       }
       .download-container {
         margin: 40px 0 0 0;
+      }
+      .dashboard-flex {
+        flex-direction: column;
+        align-items: center;
+      }
+      .slicer-panel {
+        flex-direction: row;
+        gap: 12px;
+        margin-bottom: 18px;
+        margin-right: 0;
+      }
+      .dashboard-content {
+        max-width: 98vw;
+        padding: 18px 6vw 18px 6vw;
+      }
+      .cards-row {
+        flex-direction: column;
+        gap: 18px;
       }
     }
   </style>
@@ -196,18 +288,36 @@
   <!-- Chart.js CDN -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-  <!-- Section: Real-Time Forecast Dashboard -->
-  <section id="realtime-dashboard" style="margin-top:60px; max-width:1200px; margin-left:auto; margin-right:auto;">
-    <h2 style="color:#fff;">Real-Time Forecast</h2>
-    <div style="display:flex; gap:24px; align-items:center; margin-bottom:18px;">
-      <input type="text" id="partno-input" placeholder="Masukkan Part Number" style="padding:8px; border-radius:6px; border:1px solid #bfc9d1; min-width:180px;">
-      <select id="bulan-dropdown" style="padding:8px; border-radius:6px; border:1px solid #bfc9d1; min-width:140px;"></select>
+  <div class="dashboard-flex">
+    <div class="slicer-panel">
+      <input type="text" id="partno-input" placeholder="Masukkan Part Number" class="slicer-input">
+      <select id="bulan-dropdown" class="slicer-dropdown" multiple></select>
     </div>
-    <div id="realtime-charts">
-      <canvas id="realtime-bar-chart" height="120"></canvas>
-      <canvas id="realtime-line-chart" height="80" style="margin-top:32px;"></canvas>
+    <div class="dashboard-content">
+      <section id="realtime-dashboard">
+        <h2 style="color:#fff;">Real-Time Forecast</h2>
+        <div class="cards-row">
+          <div class="forecast-card" id="card-optimist">
+            <div class="card-title">Forecast Optimist</div>
+            <div class="card-value" id="card-optimist-value">0</div>
+          </div>
+          <div class="forecast-card" id="card-neutral">
+            <div class="card-title">Forecast Neutral</div>
+            <div class="card-value" id="card-neutral-value">0</div>
+          </div>
+          <div class="forecast-card" id="card-pessimist">
+            <div class="card-title">Forecast Pessimist</div>
+            <div class="card-value" id="card-pessimist-value">0</div>
+          </div>
+        </div>
+        <div id="realtime-charts">
+          <canvas id="realtime-bar-chart" height="120"></canvas>
+          <canvas id="realtime-line-chart" height="80" style="margin-top:32px;"></canvas>
+        </div>
+      </section>
+      <!-- Backtesting dashboard bisa ditambahkan di bawah jika ingin -->
     </div>
-  </section>
+  </div>
 
   <!-- Section: Backtesting Dashboard -->
   <section id="backtest-dashboard" style="margin-top:60px; max-width:1200px; margin-left:auto; margin-right:auto;">
