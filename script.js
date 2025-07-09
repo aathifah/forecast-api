@@ -248,24 +248,91 @@ function renderRealtimeDashboard() {
   });
 }
 
-// Fungsi render chart backtest
-function renderBacktestDashboard() {
-  const partno = document.getElementById('partno-backtest-input').value.trim();
-  const bulan = document.getElementById('bulan-backtest-dropdown').value;
-  // Filter data
+// ===== BACKTESTING DASHBOARD BARU =====
+function getBacktestMonths() {
+  // Ambil semua bulan unik dari backtestData
+  const months = Array.from(new Set(backtestData.map(d => d.MONTH)));
+  // Urutkan
+  return months.sort((a, b) => new Date(a) - new Date(b));
+}
+
+function populateBacktestDropdown() {
+  const bulanDropdown = document.getElementById('bulan-backtest-dropdown');
+  if (!bulanDropdown) return;
+  const months = getBacktestMonths();
+  bulanDropdown.innerHTML = '';
+  // Opsi "Semua Bulan"
+  const allOpt = document.createElement('option');
+  allOpt.value = '__ALL__';
+  allOpt.textContent = 'Semua Bulan';
+  bulanDropdown.appendChild(allOpt);
+  months.forEach(m => {
+    const opt = document.createElement('option');
+    opt.value = m;
+    opt.textContent = m.replace(/T.*$/, '');
+    bulanDropdown.appendChild(opt);
+  });
+}
+
+function getSelectedBacktestMonths() {
+  const bulanDropdown = document.getElementById('bulan-backtest-dropdown');
+  if (!bulanDropdown) return [];
+  const selected = Array.from(bulanDropdown.selectedOptions).map(opt => opt.value);
+  if (selected.includes('__ALL__') || selected.length === 0) {
+    // Jika pilih "Semua Bulan" atau tidak pilih apapun, return semua bulan
+    return getBacktestMonths();
+  }
+  return selected;
+}
+
+function filterBacktestData(partno, months) {
   let data = backtestData;
-  if (partno) data = data.filter(d => d.PART_NO === partno);
-  if (bulan) data = data.filter(d => d.MONTH === bulan);
-  // Line chart: Forecast vs Actual
-  const labels = data.map(d => d.MONTH);
-  const forecast = data.map(d => d.FORECAST);
-  const actual = data.map(d => d.ACTUAL);
+  if (partno) {
+    data = data.filter(d => d.PART_NO && d.PART_NO.toLowerCase().includes(partno.toLowerCase()));
+  }
+  if (months && months.length > 0) {
+    data = data.filter(d => months.includes(d.MONTH));
+  }
+  return data;
+}
+
+function renderBacktestCards() {
+  const partno = document.getElementById('partno-backtest-input').value.trim();
+  const months = getSelectedBacktestMonths();
+  const filtered = filterBacktestData(partno, months);
+  // Forecast QTY: jumlah total kolom FORECAST
+  const qty = filtered.reduce((sum, d) => sum + (Number(d.FORECAST) || 0), 0);
+  // Average Error: rata-rata kolom HYBRID_ERROR (asumsi persen string, misal '5%')
+  const errors = filtered.map(d => {
+    if (typeof d.HYBRID_ERROR === 'string' && d.HYBRID_ERROR.includes('%')) {
+      return parseFloat(d.HYBRID_ERROR.replace('%', ''));
+    }
+    return Number(d.HYBRID_ERROR) || 0;
+  });
+  const avgError = errors.length ? errors.reduce((a, b) => a + b, 0) / errors.length : 0;
+  document.getElementById('card-backtest-qty-value').textContent = qty.toLocaleString();
+  document.getElementById('card-backtest-error-value').textContent = avgError.toFixed(2) + '%';
+}
+
+function renderBacktestLineChart() {
+  const partno = document.getElementById('partno-backtest-input').value.trim();
+  // Untuk line chart, filter hanya partno, semua bulan
+  let data = backtestData;
+  if (partno) {
+    data = data.filter(d => d.PART_NO && d.PART_NO.toLowerCase().includes(partno.toLowerCase()));
+  }
+  // Urutkan bulan
+  const months = Array.from(new Set(data.map(d => d.MONTH))).sort((a, b) => new Date(a) - new Date(b));
+  const monthMap = {};
+  data.forEach(d => { monthMap[d.MONTH] = d; });
+  const forecast = months.map(m => monthMap[m] ? Number(monthMap[m].FORECAST) : null);
+  const actual = months.map(m => monthMap[m] ? Number(monthMap[m].ACTUAL) : null);
   if (backtestLineChart) backtestLineChart.destroy();
   const ctxLine = document.getElementById('backtest-line-chart').getContext('2d');
   backtestLineChart = new Chart(ctxLine, {
     type: 'line',
     data: {
-      labels: labels,
+      labels: months.map(m => m.replace(/T.*$/, '')),
       datasets: [
         { label: 'Forecast', data: forecast, borderColor: '#2196f3', backgroundColor: 'rgba(33,150,243,0.1)', tension: 0.2 },
         { label: 'Actual', data: actual, borderColor: '#aaa', backgroundColor: 'rgba(200,200,200,0.1)', tension: 0.2 }
@@ -273,9 +340,17 @@ function renderBacktestDashboard() {
     },
     options: { responsive: true, plugins: { legend: { position: 'top' } } }
   });
-  // Bar chart: Best Model count
+}
+
+function renderBacktestBarChart() {
+  const partno = document.getElementById('partno-backtest-input').value.trim();
+  const months = getSelectedBacktestMonths();
+  const filtered = filterBacktestData(partno, months);
+  // Hitung distribusi BEST_MODEL
   const modelCounts = {};
-  data.forEach(d => { modelCounts[d.BEST_MODEL] = (modelCounts[d.BEST_MODEL] || 0) + 1; });
+  filtered.forEach(d => {
+    if (d.BEST_MODEL) modelCounts[d.BEST_MODEL] = (modelCounts[d.BEST_MODEL] || 0) + 1;
+  });
   const modelLabels = Object.keys(modelCounts);
   const modelData = Object.values(modelCounts);
   if (backtestBarChart) backtestBarChart.destroy();
@@ -290,6 +365,17 @@ function renderBacktestDashboard() {
     },
     options: { responsive: true, plugins: { legend: { display: false } } }
   });
+}
+
+function renderBacktestDashboard() {
+  renderBacktestCards();
+  renderBacktestLineChart();
+  renderBacktestBarChart();
+}
+
+function setupBacktestListeners() {
+  document.getElementById('partno-backtest-input').addEventListener('input', renderBacktestDashboard);
+  document.getElementById('bulan-backtest-dropdown').addEventListener('change', renderBacktestDashboard);
 }
 
 // Event listener input PartNo & Bulan (multiple select)
@@ -311,6 +397,9 @@ window.addEventListener('DOMContentLoaded', () => {
   renderRealtimeDashboard();
   renderBacktestDashboard();
   setupDashboardListeners();
+  populateBacktestDropdown();
+  renderBacktestDashboard();
+  setupBacktestListeners();
 });
 
 // Event listener untuk tombol proses forecast
