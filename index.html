@@ -23,6 +23,15 @@
     <div class="chart-section">
       <canvas id="forecastChart"></canvas>
     </div>
+    <hr style="margin:32px 0 18px 0;">
+    <div style="text-align:center; margin-bottom:18px;">
+      <b>Download Hasil Forecast (Excel, 2 Sheet: Backtest & RealTimeForecast)</b><br>
+      <form id="download-form" style="display:inline-block; margin-top:10px;">
+        <input type="file" id="download-file-input" accept=".xlsx,.xls" required />
+        <button type="submit">Download Forecast Excel</button>
+      </form>
+      <div id="download-status"></div>
+    </div>
   </div>
   <script src="/static/script.js"></script>
 </body>
