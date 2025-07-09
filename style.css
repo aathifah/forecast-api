@@ -124,7 +124,7 @@
     color: #fff;
   }
   
-  /* Upload section wrapper: full viewport, center content */
+  /* Upload section wrapper: flex, info-section kiri, upload kanan */
   .upload-section-wrapper {
     width: 100vw;
     min-height: 100vh;
@@ -151,17 +151,14 @@
   /* .download-container.centered-upload yang ini perlu di-override */
   /* Kotak upload di kanan tengah layar, space 3px dari kanan */
   .download-container.centered-upload {
-    position: fixed; /* Menggunakan fixed agar posisinya relatif terhadap viewport */
-    top: 50%; /* Memulai dari tengah vertikal */
-    right: 3vw; /* Jarak 3vw dari sisi kanan viewport, lebih responsif */
-    transform: translateY(-50%); /* Menggeser ke atas setengah dari tinggi elemen agar benar-benar di tengah vertikal */
-    margin: 0; /* Menghilangkan margin yang mungkin ada */
-    width: 23vw; /* Menggunakan unit viewport width untuk lebar yang responsif */
-    height: auto; /* Menggunakan auto agar tinggi menyesuaikan konten */
+    position: static;
+    margin-left: auto;
+    width: 23vw;
+    height: 15vw;
     max-width: 320px;
-    min-width: 200px; /* Menyesuaikan min-width agar tidak terlalu kecil */
-    min-height: 120px; /* Menyesuaikan min-height agar tidak terlalu kecil */
-    padding: 24px 20px 20px 20px; /* Menyesuaikan padding agar lebih proporsional */
+    min-width: 200px;
+    min-height: 120px;
+    padding: 24px 20px 20px 20px;
     font-size: 1.1rem;
     border-radius: 18px;
     box-shadow: 0 8px 32px 0 rgba(31,38,135,0.18);
@@ -256,15 +253,12 @@
     }
     /* Media query untuk kotak upload di mobile */
     .download-container.centered-upload {
-      position: relative; /* Kembali ke posisi relatif di mobile */
-      top: unset; /* Hapus top */
-      right: unset; /* Hapus right */
-      transform: unset; /* Hapus transform */
-      margin: 24px auto 0 auto; /* Kembali ke margin auto untuk penempatan tengah */
-      padding: 10px 4px 8px 4px;
-      min-width: 0;
-      max-width: 90vw;
+      margin: 24px auto 0 auto;
       width: 90vw;
+      min-width: 0;
+      max-width: 98vw;
       height: auto;
+      padding: 10px 4px 8px 4px;
+      position: static;
     }
   }
