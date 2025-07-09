@@ -163,12 +163,13 @@
   align-items: center;
 }
 
+/* Info-section pojok kiri atas, space kecil */
 .info-section {
-  margin-top: 60px;
-  margin-left: 60px;
+  padding-top: 15px;
+  padding-left: 15px;
+  margin: 0;
   align-items: flex-start;
   text-align: left;
-  padding: 0;
 }
 
 @media (max-width: 1100px) {
@@ -215,16 +216,16 @@
     justify-content: center;
   }
   .info-section {
-    margin-top: 32px;
-    margin-left: 0;
+    padding-top: 12px;
+    padding-left: 0;
     align-items: center;
     text-align: center;
-    padding: 0;
   }
   .download-container.centered-upload {
     margin: 32px auto 0 auto;
-    padding: 32px 12px 24px 12px;
+    padding: 22px 8px 16px 8px;
     min-width: 0;
     max-width: 98vw;
+    width: 90vw;
   }
 }
