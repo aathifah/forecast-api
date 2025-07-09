@@ -1,5 +1,5 @@
 from fastapi import FastAPI, File, UploadFile, HTTPException, Request
-from fastapi.responses import JSONResponse, FileResponse
+from fastapi.responses import JSONResponse, FileResponse, StreamingResponse
 import pandas as pd
 import io
 import base64
@@ -276,6 +276,65 @@ async def forecast_raw(request: Request):
         raise HTTPException(
             status_code=500,
             detail=f"Internal server error processing raw Excel file: {str(e)}"
+        )
+
+@app.post("/download-forecast")
+async def download_forecast_endpoint(file: UploadFile = File(...)):
+    try:
+        logger.info(f"Received file upload request for download: {file.filename}, content_type: {file.content_type}")
+        if not file.filename.endswith((".xlsx", ".xls")):
+            logger.warning(f"Invalid file format received: {file.filename}")
+            raise HTTPException(
+                status_code=400, 
+                detail="File harus berformat Excel (.xlsx atau .xls)"
+            )
+        content = await file.read()
+        if not content:
+            logger.warning("Received an empty Excel file.")
+            raise HTTPException(
+                status_code=400,
+                detail="File Excel tidak boleh kosong."
+            )
+        df = pd.read_excel(io.BytesIO(content), engine="openpyxl")
+        logger.info(f"File '{file.filename}' loaded successfully for download. Shape: {df.shape}")
+        required_columns = ['MONTH', 'PART_NO', 'ORIGINAL_SHIPPING_QTY']
+        missing_columns = [col for col in required_columns if col not in df.columns]
+        if missing_columns:
+            logger.warning(f"Missing required columns: {missing_columns}")
+            raise HTTPException(
+                status_code=400,
+                detail=f"Kolom yang diperlukan tidak ditemukan: {missing_columns}"
+            )
+        logger.info("Starting forecast processing for download...")
+        df_processed, forecast_df = run_combined_forecast(df)
+        real_time_forecast = run_real_time_forecast(df_processed, forecast_df)
+        # Buat file Excel hasil
+        output = io.BytesIO()
+        with pd.ExcelWriter(output, engine='openpyxl') as writer:
+            forecast_df.to_excel(writer, sheet_name='Backtest', index=False)
+            real_time_forecast.to_excel(writer, sheet_name='RealTimeForecast', index=False)
+        output.seek(0)
+        logger.info("Forecast Excel file created successfully.")
+        return StreamingResponse(
+            output,
+            media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            headers={
+                "Content-Disposition": f"attachment; filename=forecast_result_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+            }
+        )
+    except HTTPException:
+        raise
+    except pd.errors.EmptyDataError:
+        logger.error("Pandas EmptyDataError: Excel file is empty or malformed.")
+        raise HTTPException(
+            status_code=400,
+            detail="File Excel kosong atau tidak valid."
+        )
+    except Exception as e:
+        logger.error(f"Unexpected error in /download-forecast endpoint: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Internal server error processing file: {str(e)}"
         )
 
 if __name__ == "__main__":
