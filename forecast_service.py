@@ -470,6 +470,8 @@ def run_real_time_forecast(original_df, forecast_df):
     
         model_trained = None
         cat_cols = ['PART_NAME', 'TOPAS_ORDER_TYPE', 'CREATED_DEMAND_FLAG', 'CUST_TYPE2']
+        features = []
+        df_f = None
         if best_model in ['LINREG', 'RF', 'XGB']:
             df_f = df_series.copy()
             df_f['MONTH_NUM'] = df_f['MONTH'].dt.month
@@ -511,34 +513,48 @@ def run_real_time_forecast(original_df, forecast_df):
                 )
                 model_trained.fit(X_train, y_train)
 
-        for month in forecast_months:
-            fc = 0
+        # --- Recursive Forecasting ---
+        future_series = list(series)
+        future_df_f = df_f.copy() if df_f is not None else None
+        for idx, month in enumerate(forecast_months):
+            # Buat lag dari future_series
+            lags = [future_series[-i] if len(future_series) >= i else 0 for i in range(1, 7)]
             if best_model == 'MA6':
-                fc = forecast_ma6(series)
+                fc = forecast_ma6(future_series)
             elif best_model == 'WMA':
-                fc = forecast_wma(series)
+                fc = forecast_wma(pd.Series(future_series))
             elif best_model == 'ETS':
-                fc = forecast_ets(series)
+                fc = forecast_ets(np.array(future_series))
             elif best_model == 'ARIMA':
-                fc = forecast_arima(series)
-            elif model_trained:
-                test_row = {}
-                for i in range(1, 7):
-                    test_row[f'LAG_{i}'] = series[-i] if len(series) >= i else 0
+                fc = forecast_arima(np.array(future_series))
+            elif model_trained and future_df_f is not None and not future_df_f.empty:
+                test_row = {f'LAG_{i}': lags[i-1] for i in range(1, 7)}
                 test_row['MONTH_NUM'] = month.month
                 test_row['YEAR'] = month.year
                 test_row['MONTH_SIN'] = np.sin(2 * np.pi * month.month / 12)
                 test_row['MONTH_COS'] = np.cos(2 * np.pi * month.month / 12)
-                test_row['ROLLING_MEAN_3'] = df_f['ROLLING_MEAN_3'].iloc[-1]
-                test_row['ROLLING_MEAN_6'] = df_f['ROLLING_MEAN_6'].iloc[-1]
-                test_row['ROLLING_STD_3'] = df_f['ROLLING_STD_3'].iloc[-1]
-                test_row['ROLLING_STD_6'] = df_f['ROLLING_STD_6'].iloc[-1]
-                test_row['GROWTH_LAG_3_6'] = df_f['GROWTH_LAG_3_6'].iloc[-1]
+                # Rolling features: update dari future_series
+                test_row['ROLLING_MEAN_3'] = np.mean(future_series[-3:]) if len(future_series) >= 3 else 0
+                test_row['ROLLING_MEAN_6'] = np.mean(future_series[-6:]) if len(future_series) >= 6 else 0
+                test_row['ROLLING_STD_3'] = np.std(future_series[-3:]) if len(future_series) >= 3 else 0
+                test_row['ROLLING_STD_6'] = np.std(future_series[-6:]) if len(future_series) >= 6 else 0
+                test_row['GROWTH_LAG_3_6'] = lags[2] / (lags[5] + 1e-8) if len(lags) >= 6 else 0
+                # Categorical: gunakan nilai terakhir
                 for col in cat_cols:
-                    test_row[col] = df_f[col].iloc[-1]
+                    test_row[col] = future_df_f[col].iloc[-1] if col in future_df_f.columns and not future_df_f.empty else 0
                 X_test = pd.DataFrame([test_row], columns=features)
                 y_pred = model_trained.predict(X_test)
                 fc = float(y_pred[0]) if len(y_pred) > 0 else 0
+                # Tambahkan ke future_df_f
+                new_row = test_row.copy()
+                new_row['ORIGINAL_SHIPPING_QTY'] = fc
+                new_row['MONTH'] = month
+                future_df_f = pd.concat([future_df_f, pd.DataFrame([new_row])], ignore_index=True)
+            else:
+                fc = 0
+
+            # Tambahkan hasil forecast ke future_series
+            future_series.append(fc)
 
             results.append({
                 'PART_NO': part,
