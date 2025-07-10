@@ -142,9 +142,8 @@
   /* .download-container.centered-upload yang ini perlu di-override */
   /* Kotak upload di kanan tengah layar, space 3px dari kanan */
   .download-container.centered-upload {
-    position: absolute;
     top: 40px;
-    left: 140px;
+    transform: translate(-50%, 70%);
     margin: 80px 15px 0 15px;
     width: 23vw;
     height: auto;
