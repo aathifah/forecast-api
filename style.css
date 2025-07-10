@@ -144,8 +144,7 @@
   .download-container.centered-upload {
     position: absolute;           
     top: 50%;                  
-    right: 15px;                   
-    transform: translateY(-50%); 
+    right: 15px;
     width: 23vw;
     height: auto;
     max-width: 320px;
