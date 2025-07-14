@@ -259,6 +259,28 @@
       color: #fff;
       font-size: 0.95em;
     }
+    .upload-instructions {
+      font-size: 0.98em;
+      color: #333;
+      margin-top: 2px;
+      margin-bottom: 8px;
+      line-height: 1.5;
+      text-align: left;
+    }
+    .upload-instructions ul {
+      margin: 4px 0 0 18px;
+      padding: 0;
+      font-size: 0.97em;
+      color: #333;
+      line-height: 1.4;
+    }
+    .upload-instructions code {
+      background: #f3f3f3;
+      color: #3578e5;
+      border-radius: 3px;
+      padding: 1px 4px;
+      font-size: 0.97em;
+    }
     @media (max-width: 900px) {
       .main-flex {
         flex-direction: column;
@@ -306,10 +328,15 @@
       <div class="download-container centered-upload">
         <div class="download-title">
           <strong>Halo!</strong>
-          <span>Upload dataset (.xlsx) Anda disini!</span>
-          <span>Pastikan datasetmu memiliki kolom "PART_NO", "MONTH", "PART_NAME", </span>
-          <span>"ORIGINAL_SHIPPING_QTY", "TOPAS_ORDER_TYPE", "CREATED_DEMAND_FLAG" </span>,
-          <span>"CUSTOMER_CODE", "CUST_TYPE2"</span>
+          <div class="upload-instructions">
+            <span>Upload dataset (.xlsx) Anda di sini!</span>
+            <ul style="margin:8px 0 0 18px;padding:0;font-size:0.98em;line-height:1.5;color:#333;">
+              <li>Pastikan datasetmu memiliki kolom berikut:</li>
+              <li><code>PART_NO</code>, <code>MONTH</code>, <code>PART_NAME</code>,</li>
+              <li><code>ORIGINAL_SHIPPING_QTY</code>, <code>TOPAS_ORDER_TYPE</code>, <code>CREATED_DEMAND_FLAG</code>,</li>
+              <li><code>CUSTOMER_CODE</code>, <code>CUST_TYPE2</code></li>
+            </ul>
+          </div>
         </div>
         <form id="download-form" class="download-form" autocomplete="off">
           <input type="file" id="download-file-input" accept=".xlsx" required />
