@@ -335,7 +335,10 @@
         <input type="text" id="partno-input" placeholder="Cari Part Number" class="slicer-input">
         <div class="month-range-group">
           <label for="realtime-month-picker" style="color:#bfc9d1;font-size:0.95em;margin-bottom:2px;">Pilih Bulan</label>
-          <input type="text" id="realtime-month-picker" class="month-range-input" placeholder="Pilih rentang bulan" readonly>
+          <div style="display:flex;align-items:center;gap:6px;">
+            <input type="text" id="realtime-month-picker" class="month-range-input" placeholder="Pilih rentang bulan" readonly>
+            <button id="realtime-month-clear" type="button" style="background:#3578e5;color:#fff;border:none;border-radius:4px;padding:4px 10px;font-size:0.95em;cursor:pointer;">Clear</button>
+          </div>
         </div>
       </div>
       <section id="realtime-dashboard">
@@ -364,7 +367,10 @@
       <div class="dashboard-filters">
         <div class="month-range-group">
           <label for="backtest-month-picker" style="color:#bfc9d1;font-size:0.95em;margin-bottom:2px;">Pilih Bulan</label>
-          <input type="text" id="backtest-month-picker" class="month-range-input" placeholder="Pilih rentang bulan" readonly>
+          <div style="display:flex;align-items:center;gap:6px;">
+            <input type="text" id="backtest-month-picker" class="month-range-input" placeholder="Pilih rentang bulan" readonly>
+            <button id="backtest-month-clear" type="button" style="background:#3578e5;color:#fff;border:none;border-radius:4px;padding:4px 10px;font-size:0.95em;cursor:pointer;">Clear</button>
+          </div>
         </div>
       </div>
       <h2 style="color:#fff;">Hasil Pelatihan Prediksi di 4 Bulan Sebelumnya</h2>
