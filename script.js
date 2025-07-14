@@ -260,18 +260,26 @@ function renderBacktestCards(filtered) {
 
 function renderBacktestDashboard() {
   const partno = document.getElementById('partno-input').value.trim();
-  // Filter data untuk cards & column chart (partno + bulan)
-  const filtered = getFilteredData(backtestData, partno, selectedBacktestMonths);
   // Data untuk line chart (hanya filter partno, abaikan bulan)
   const lineData = getFilteredData(backtestData, partno, []);
+  // Data untuk cards & column chart
+  let filtered = backtestData;
+  if (partno) filtered = filtered.filter(d => d.PART_NO && d.PART_NO.toLowerCase().includes(partno.toLowerCase()));
+  // Untuk cards: jika filter bulan kosong, pakai seluruh hasil filter partno; jika filter bulan diisi, pakai hasil filter partno & bulan
+  let filteredForCards = filtered;
+  if (selectedBacktestMonths && selectedBacktestMonths.length > 0) {
+    filteredForCards = filtered.filter(d => selectedBacktestMonths.includes(toYearMonth(d.MONTH)));
+  }
+  // Untuk column chart: filter partno & bulan
+  let filteredForColumn = filteredForCards;
   // Cards: Forecast QTY dan Average Error
-  const sumForecast = filtered.reduce((sum, d) => sum + (Number(d.FORECAST) || 0), 0);
-  const avgError = filtered.length > 0 ? (filtered.reduce((a, b) => a + (parseFloat((b.HYBRID_ERROR||'0').replace('%',''))||0), 0) / filtered.length) : 0;
+  const sumForecast = filteredForCards.reduce((sum, d) => sum + (Number(d.FORECAST) || 0), 0);
+  const avgError = filteredForCards.length > 0 ? (filteredForCards.reduce((a, b) => a + (parseFloat((b.HYBRID_ERROR||'0').replace('%',''))||0), 0) / filteredForCards.length) : 0;
   document.getElementById('card-backtest-qty-value').textContent = sumForecast.toLocaleString();
   document.getElementById('card-backtest-error-value').textContent = avgError.toFixed(2) + '%';
   // Column chart: Best Model count
   const monthMap = {};
-  filtered.forEach(d => { monthMap[d.MONTH] = d; });
+  filteredForColumn.forEach(d => { monthMap[d.MONTH] = d; });
   const uniqueMonths = Object.keys(monthMap).sort((a, b) => new Date(a) - new Date(b));
   const uniqueData = uniqueMonths.map(m => monthMap[m]);
   const modelCounts = {};
@@ -496,17 +504,26 @@ function renderRealtimeDashboard() {
 // Render dashboard backtest
 function renderBacktestDashboard() {
   const partno = partnoInput.value.trim();
-  // Filter data sesuai partno dan bulan
-  const filtered = getFilteredData(backtestData, partno, selectedBacktestMonths);
-  // Pastikan hanya 1 data per bulan (ambil data terakhir jika duplikat)
-  const monthMap = {};
-  filtered.forEach(d => { monthMap[d.MONTH] = d; });
-  const uniqueMonths = Object.keys(monthMap).sort((a, b) => new Date(a) - new Date(b));
-  const uniqueData = uniqueMonths.map(m => monthMap[m]);
-  renderForecastCards(uniqueData);
-  // Bar chart: Best Model count
+  // Data untuk line chart (hanya filter partno, abaikan bulan)
+  const lineData = getFilteredData(backtestData, partno, []);
+  // Data untuk cards & column chart
+  let filtered = backtestData;
+  if (partno) filtered = filtered.filter(d => d.PART_NO && d.PART_NO.toLowerCase().includes(partno.toLowerCase()));
+  // Untuk cards: jika filter bulan kosong, pakai seluruh hasil filter partno; jika filter bulan diisi, pakai hasil filter partno & bulan
+  let filteredForCards = filtered;
+  if (selectedBacktestMonths && selectedBacktestMonths.length > 0) {
+    filteredForCards = filtered.filter(d => selectedBacktestMonths.includes(toYearMonth(d.MONTH)));
+  }
+  // Untuk column chart: filter partno & bulan
+  let filteredForColumn = filteredForCards;
+  // Cards: Forecast QTY dan Average Error
+  const sumForecast = filteredForCards.reduce((sum, d) => sum + (Number(d.FORECAST) || 0), 0);
+  const avgError = filteredForCards.length > 0 ? (filteredForCards.reduce((a, b) => a + (parseFloat((b.HYBRID_ERROR||'0').replace('%',''))||0), 0) / filteredForCards.length) : 0;
+  document.getElementById('card-backtest-qty-value').textContent = sumForecast.toLocaleString();
+  document.getElementById('card-backtest-error-value').textContent = avgError.toFixed(2) + '%';
+  // Column chart: Best Model count
   const modelCounts = {};
-  filtered.forEach(d => {
+  filteredForColumn.forEach(d => {
     if (d.BEST_MODEL) modelCounts[d.BEST_MODEL] = (modelCounts[d.BEST_MODEL] || 0) + 1;
   });
   const modelLabels = Object.keys(modelCounts);
