@@ -158,43 +158,6 @@ function toYearMonth(str) {
   return str.slice(0, 7);
 }
 
-// Helper: isi dropdown bulan dengan bulan yang tersedia di data
-function populateMonthDropdown(dropdownId, data, monthField) {
-  const dropdown = document.getElementById(dropdownId);
-  if (!dropdown) return;
-  const months = Array.from(new Set(data.map(d => d[monthField]))).sort((a, b) => new Date(a) - new Date(b));
-  dropdown.innerHTML = '';
-  months.forEach(m => {
-    const opt = document.createElement('option');
-    opt.value = m;
-    opt.textContent = m.replace(/T.*$/, '');
-    dropdown.appendChild(opt);
-  });
-}
-
-function getSelectedMonths(dropdownId, data) {
-  const dropdown = document.getElementById(dropdownId);
-  if (!dropdown) return [];
-  const selected = Array.from(dropdown.selectedOptions).map(opt => opt.value);
-  if (selected.length === 0) {
-    // Jika tidak pilih apapun, return semua bulan
-    return Array.from(new Set(data.map(d => d.MONTH))).sort((a, b) => new Date(a) - new Date(b));
-  }
-  return selected;
-}
-
-// Gabungkan filter Part Number
-function getFilteredData(data, partno, selectedMonths) {
-  let filtered = data;
-  if (partno) {
-    filtered = filtered.filter(d => d.PART_NO && d.PART_NO.toLowerCase().includes(partno.toLowerCase()));
-  }
-  if (selectedMonths && selectedMonths.length > 0) {
-    filtered = filtered.filter(d => selectedMonths.includes(d.MONTH));
-  }
-  return filtered;
-}
-
 // Fungsi render cards forecast
 function renderForecastCards(filteredData) {
   const totalOptimist = filteredData.reduce((sum, d) => sum + (Number(d.FORECAST_OPTIMIST) || 0), 0);
@@ -207,7 +170,7 @@ function renderForecastCards(filteredData) {
 
 function renderRealtimeDashboard() {
   const partno = document.getElementById('partno-input').value.trim();
-  const selectedMonths = getSelectedMonths('realtime-month-dropdown', realtimeData);
+  const selectedMonths = getSelectedMonthsRealtime();
   let data = getFilteredData(realtimeData, partno, selectedMonths);
   // Pastikan hanya 1 data per bulan (ambil data terakhir jika duplikat)
   const monthMap = {};
@@ -285,7 +248,7 @@ function renderBacktestCards(filtered) {
 
 function renderBacktestDashboard() {
   const partno = document.getElementById('partno-input').value.trim();
-  const selectedMonths = getSelectedMonths('backtest-month-dropdown', backtestData);
+  const selectedMonths = getSelectedMonthsBacktest();
   let filtered = getFilteredData(backtestData, partno, selectedMonths);
   renderBacktestCards(filtered);
   // Bar chart: Best Model count
@@ -328,13 +291,82 @@ function renderBacktestDashboard() {
   });
 }
 
+// ===== FLATPICKR MONTH PICKER =====
+let realtimeMonthPicker = null;
+let backtestMonthPicker = null;
+let selectedRealtimeMonths = [];
+let selectedBacktestMonths = [];
+
+function setupMonthPickers() {
+  // Helper: konversi array bulan ke array tanggal pertama bulan (YYYY-MM-01)
+  function monthsToDates(monthsArr) {
+    return monthsArr.map(m => {
+      if (m.length === 7) return m + '-01';
+      if (m.length === 10) return m.slice(0, 7) + '-01';
+      return m;
+    });
+  }
+  // Real-time
+  const realtimeMonths = Array.from(new Set(realtimeData.map(d => d.MONTH))).sort((a, b) => new Date(a) - new Date(b));
+  if (realtimeMonthPicker) realtimeMonthPicker.destroy();
+  realtimeMonthPicker = flatpickr('#realtime-month-picker', {
+    plugins: [new monthSelectPlugin({ shorthand: true, dateFormat: 'Y-m', altFormat: 'F Y' })],
+    mode: 'range',
+    enable: monthsToDates(realtimeMonths),
+    disableMobile: true,
+    onChange: function(selectedDates, dateStrArr) {
+      // Ambil bulan yang dipilih (format YYYY-MM)
+      selectedRealtimeMonths = selectedDates.map(d => d.toISOString().slice(0, 7));
+      renderRealtimeDashboard();
+    }
+  });
+  // Backtest
+  const backtestMonths = Array.from(new Set(backtestData.map(d => d.MONTH))).sort((a, b) => new Date(a) - new Date(b));
+  if (backtestMonthPicker) backtestMonthPicker.destroy();
+  backtestMonthPicker = flatpickr('#backtest-month-picker', {
+    plugins: [new monthSelectPlugin({ shorthand: true, dateFormat: 'Y-m', altFormat: 'F Y' })],
+    mode: 'range',
+    enable: monthsToDates(backtestMonths),
+    disableMobile: true,
+    onChange: function(selectedDates, dateStrArr) {
+      selectedBacktestMonths = selectedDates.map(d => d.toISOString().slice(0, 7));
+      renderBacktestDashboard();
+    }
+  });
+}
+
+// Ganti getSelectedMonths agar ambil dari picker
+function getSelectedMonthsRealtime() {
+  if (!selectedRealtimeMonths || selectedRealtimeMonths.length === 0) {
+    return Array.from(new Set(realtimeData.map(d => d.MONTH))).sort((a, b) => new Date(a) - new Date(b));
+  }
+  // Jika range, ambil semua bulan di antara
+  if (selectedRealtimeMonths.length === 2) {
+    const [start, end] = selectedRealtimeMonths;
+    const all = Array.from(new Set(realtimeData.map(d => d.MONTH))).sort((a, b) => new Date(a) - new Date(b));
+    return all.filter(m => m >= start && m <= end);
+  }
+  return selectedRealtimeMonths;
+}
+function getSelectedMonthsBacktest() {
+  if (!selectedBacktestMonths || selectedBacktestMonths.length === 0) {
+    return Array.from(new Set(backtestData.map(d => d.MONTH))).sort((a, b) => new Date(a) - new Date(b));
+  }
+  if (selectedBacktestMonths.length === 2) {
+    const [start, end] = selectedBacktestMonths;
+    const all = Array.from(new Set(backtestData.map(d => d.MONTH))).sort((a, b) => new Date(a) - new Date(b));
+    return all.filter(m => m >= start && m <= end);
+  }
+  return selectedBacktestMonths;
+}
+
+// Setup event listeners
 function setupDashboardListeners() {
   document.getElementById('partno-input').addEventListener('input', () => {
     renderRealtimeDashboard();
     renderBacktestDashboard();
   });
-  document.getElementById('realtime-month-dropdown').addEventListener('change', renderRealtimeDashboard);
-  document.getElementById('backtest-month-dropdown').addEventListener('change', renderBacktestDashboard);
+  // Tidak perlu event change untuk picker, sudah di-handle onChange Flatpickr
 }
 
 // Event listener input PartNo & Bulan (multiple select)
@@ -353,8 +385,7 @@ window.addEventListener('DOMContentLoaded', () => {
   originalData = dummyOriginal;
   backtestData = dummyBacktest;
   realtimeData = dummyRealtime;
-  populateMonthDropdown('realtime-month-dropdown', realtimeData, 'MONTH');
-  populateMonthDropdown('backtest-month-dropdown', backtestData, 'MONTH');
+  setupMonthPickers();
   renderRealtimeDashboard();
   renderBacktestDashboard();
   setupDashboardListeners();
@@ -433,8 +464,7 @@ if (processBtn && fileInput && statusDiv && progressBarContainer && progressBar 
         originalData = data.original_df;
         backtestData = data.forecast_df;
         realtimeData = data.real_time_forecast;
-        populateMonthDropdown('realtime-month-dropdown', realtimeData, 'MONTH');
-        populateMonthDropdown('backtest-month-dropdown', backtestData, 'MONTH');
+        setupMonthPickers(); // Update pickers with new data
         renderRealtimeDashboard();
         renderBacktestDashboard();
       }
