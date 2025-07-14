@@ -260,34 +260,44 @@ function renderBacktestCards(filtered) {
 
 function renderBacktestDashboard() {
   const partno = document.getElementById('partno-input').value.trim();
-  const selectedMonths = getSelectedMonthsBacktest();
-  let filtered = getFilteredData(backtestData, partno, selectedMonths);
-  renderBacktestCards(filtered);
+  // Filter data sesuai partno dan bulan
+  const filtered = getFilteredData(backtestData, partno, selectedBacktestMonths);
+  // Pastikan hanya 1 data per bulan (ambil data terakhir jika duplikat)
+  const monthMap = {};
+  filtered.forEach(d => { monthMap[d.MONTH] = d; });
+  const uniqueMonths = Object.keys(monthMap).sort((a, b) => new Date(a) - new Date(b));
+  const uniqueData = uniqueMonths.map(m => monthMap[m]);
+
+  // Card: Forecast QTY dan Average Error
+  const sumForecast = uniqueData.reduce((sum, d) => sum + (Number(d.FORECAST) || 0), 0);
+  const avgError = uniqueData.length > 0 ? (uniqueData.reduce((a, b) => a + (parseFloat((b.HYBRID_ERROR||'0').replace('%',''))||0), 0) / uniqueData.length) : 0;
+  document.getElementById('card-backtest-qty-value').textContent = sumForecast.toLocaleString();
+  document.getElementById('card-backtest-error-value').textContent = avgError.toFixed(2) + '%';
+
   // Bar chart: Best Model count
   const modelCounts = {};
-  filtered.forEach(d => {
+  uniqueData.forEach(d => {
     if (d.BEST_MODEL) modelCounts[d.BEST_MODEL] = (modelCounts[d.BEST_MODEL] || 0) + 1;
   });
-  const modelLabels = Object.keys(modelCounts);
-  const modelData = Object.values(modelCounts);
+  const barLabels = Object.keys(modelCounts);
+  const barData = barLabels.map(m => modelCounts[m]);
   if (backtestBarChart) backtestBarChart.destroy();
   const ctxBar = document.getElementById('backtest-bar-chart').getContext('2d');
   backtestBarChart = new Chart(ctxBar, {
     type: 'bar',
     data: {
-      labels: modelLabels,
-      datasets: [
-        { label: 'Best Model', data: modelData, backgroundColor: 'rgba(54, 162, 235, 0.6)' }
-      ]
+      labels: barLabels,
+      datasets: [{ label: 'Count', data: barData, backgroundColor: '#2196f3' }]
     },
     options: { responsive: true, plugins: { legend: { display: false } } }
   });
-  // Line chart
-  const monthsLine = Array.from(new Set(filtered.map(d => d.MONTH))).sort((a, b) => new Date(a) - new Date(b));
-  const monthMap = {};
-  filtered.forEach(d => { monthMap[d.MONTH] = d; });
-  const forecast = monthsLine.map(m => monthMap[m] ? Number(monthMap[m].FORECAST) : null);
-  const actual = monthsLine.map(m => monthMap[m] ? Number(monthMap[m].ACTUAL) : null);
+
+  // Line chart: Forecast vs Actual
+  const monthsLine = uniqueMonths;
+  const monthMapLine = {};
+  uniqueData.forEach(d => { monthMapLine[d.MONTH] = d; });
+  const forecast = monthsLine.map(m => monthMapLine[m] ? Number(monthMapLine[m].FORECAST) : null);
+  const actual = monthsLine.map(m => monthMapLine[m] ? Number(monthMapLine[m].ACTUAL) : null);
   if (backtestLineChart) backtestLineChart.destroy();
   const ctxLine = document.getElementById('backtest-line-chart').getContext('2d');
   backtestLineChart = new Chart(ctxLine, {
@@ -296,7 +306,7 @@ function renderBacktestDashboard() {
       labels: monthsLine.map(m => m.replace(/T.*$/, '')),
       datasets: [
         { label: 'Forecast', data: forecast, borderColor: '#2196f3', backgroundColor: 'rgba(33,150,243,0.1)', tension: 0.2 },
-        { label: 'Actual', data: actual, borderColor: '#aaa', backgroundColor: 'rgba(200,200,200,0.1)', tension: 0.2 }
+        { label: 'Actual', data: actual, borderColor: '#bfc9d1', backgroundColor: 'rgba(191,201,209,0.1)', tension: 0.2 }
       ]
     },
     options: { responsive: true, plugins: { legend: { position: 'top' } } }
