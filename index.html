@@ -327,17 +327,14 @@
   <div class="dashboard-2col">
     <div class="dashboard-content" id="realtime-dashboard-content">
       <div class="dashboard-filters">
-        <input type="text" id="partno-input" placeholder="Masukkan Part Number" class="slicer-input">
+        <input type="text" id="partno-input" placeholder="Cari Part Number" class="slicer-input">
         <div class="month-range-group">
-          <label for="realtime-month-start" style="color:#bfc9d1;font-size:0.95em;margin-bottom:2px;">MONTH</label>
-          <div style="display:flex;gap:8px;">
-            <input type="month" id="realtime-month-start" class="month-range-input">
-            <input type="month" id="realtime-month-end" class="month-range-input">
-          </div>
+          <label for="realtime-month-dropdown" style="color:#bfc9d1;font-size:0.95em;margin-bottom:2px;">Pilih Bulan</label>
+          <select id="realtime-month-dropdown" class="month-range-input" multiple></select>
         </div>
       </div>
       <section id="realtime-dashboard">
-        <h2 style="color:#fff;">Real-Time Forecast</h2>
+        <h2 style="color:#fff;">Prediksi Permintaan di Bulan Mendatang</h2>
         <div class="cards-row">
           <div class="forecast-card" id="card-optimist">
             <div class="card-title">Forecast Optimist</div>
@@ -360,16 +357,12 @@
     </div>
     <div class="dashboard-content" id="backtest-dashboard-content">
       <div class="dashboard-filters">
-        <input type="text" id="partno-backtest-input" placeholder="Masukkan Part Number" class="slicer-input">
         <div class="month-range-group">
-          <label for="backtest-month-start" style="color:#bfc9d1;font-size:0.95em;margin-bottom:2px;">MONTH</label>
-          <div style="display:flex;gap:8px;">
-            <input type="month" id="backtest-month-start" class="month-range-input">
-            <input type="month" id="backtest-month-end" class="month-range-input">
-          </div>
+          <label for="backtest-month-dropdown" style="color:#bfc9d1;font-size:0.95em;margin-bottom:2px;">Pilih Bulan</label>
+          <select id="backtest-month-dropdown" class="month-range-input" multiple></select>
         </div>
       </div>
-      <h2 style="color:#fff;">Backtesting</h2>
+      <h2 style="color:#fff;">Hasil Pelatihan Prediksi di 4 Bulan Sebelumnya</h2>
       <div class="cards-row">
         <div class="forecast-card" id="card-backtest-qty">
           <div class="card-title">Forecast QTY</div>
