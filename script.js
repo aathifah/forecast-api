@@ -396,28 +396,35 @@ function getFilteredDataPartOnly(data, partno) {
   return data;
 }
 
-// Filter data forecast (real-time/backtest) berdasarkan partno dan bulan forecast
+// Filter data forecast (real-time/backtest) berdasarkan partno dan bulan forecast (untuk cards & bar chart)
 function getFilteredForecastData(data, partno, selectedMonths, forecastMonths) {
   let filtered = data;
   if (partno && partno.trim() !== '') {
     filtered = filtered.filter(d => d.PART_NO && d.PART_NO.toLowerCase().includes(partno.toLowerCase()));
   }
-  // Hanya bulan forecast (bukan semua bulan di data)
   filtered = filtered.filter(d => forecastMonths.includes(d.MONTH));
   if (selectedMonths && selectedMonths.length > 0) {
     filtered = filtered.filter(d => selectedMonths.includes(d.MONTH));
   }
   return filtered;
 }
+// Filter data untuk line chart (hanya partno, tidak filter bulan)
+function getFilteredLineData(data, partno) {
+  if (partno && partno.trim() !== '') {
+    return data.filter(d => d.PART_NO && d.PART_NO.toLowerCase().includes(partno.toLowerCase()));
+  }
+  return data;
+}
 
 // Render dashboard real-time
 function renderRealtimeDashboard() {
   const partno = document.getElementById('partno-input').value.trim();
   const forecastMonths = getRealtimeForecastMonths();
-  // Filter data forecast real-time
+  // Filter untuk cards & bar chart
   const filtered = getFilteredForecastData(realtimeData, partno, selectedRealtimeMonths, forecastMonths);
-  // Jika filter kosong, tampilkan seluruh data forecast real-time
   const dataForCard = filtered.length > 0 ? filtered : realtimeData.filter(d => forecastMonths.includes(d.MONTH));
+  // Filter untuk line chart (hanya partno)
+  const lineData = getFilteredLineData(realtimeData, partno);
 
   // Update card: total forecast di bulan real-time
   const sumOptimist = dataForCard.reduce((a, b) => a + (Number(b.FORECAST_OPTIMIST)||0), 0);
@@ -429,10 +436,10 @@ function renderRealtimeDashboard() {
 
   // Column chart: hanya bulan forecast real-time
   const chartMonths = forecastMonths.filter(m => dataForCard.some(d => d.MONTH === m));
-  const barLabels = chartMonths;
-  const optimist = barLabels.map(m => dataForCard.filter(d => d.MONTH === m).reduce((a, b) => a + (Number(b.FORECAST_OPTIMIST)||0), 0));
-  const neutral = barLabels.map(m => dataForCard.filter(d => d.MONTH === m).reduce((a, b) => a + (Number(b.FORECAST_NEUTRAL)||0), 0));
-  const pessimist = barLabels.map(m => dataForCard.filter(d => d.MONTH === m).reduce((a, b) => a + (Number(b.FORECAST_PESSIMIST)||0), 0));
+  const barLabels = chartMonths.map(toYearMonth);
+  const optimist = chartMonths.map(m => dataForCard.filter(d => d.MONTH === m).reduce((a, b) => a + (Number(b.FORECAST_OPTIMIST)||0), 0));
+  const neutral = chartMonths.map(m => dataForCard.filter(d => d.MONTH === m).reduce((a, b) => a + (Number(b.FORECAST_NEUTRAL)||0), 0));
+  const pessimist = chartMonths.map(m => dataForCard.filter(d => d.MONTH === m).reduce((a, b) => a + (Number(b.FORECAST_PESSIMIST)||0), 0));
   if (realtimeBarChart) realtimeBarChart.destroy();
   const ctxBar = document.getElementById('realtime-bar-chart').getContext('2d');
   realtimeBarChart = new Chart(ctxBar, {
@@ -448,19 +455,19 @@ function renderRealtimeDashboard() {
     options: { responsive: true, plugins: { legend: { position: 'top' } } }
   });
 
-  // Line chart: history + forecast (tidak terfilter bulan, hanya partno)
+  // Line chart: history + forecast (hanya filter partno, label YYYY-MM)
   let history = originalData;
   if (partno) history = history.filter(d => d.PART_NO && d.PART_NO.toLowerCase().includes(partno.toLowerCase()));
-  const allHistoryMonths = Array.from(new Set(history.map(d => d.MONTH))).sort((a, b) => new Date(a) - new Date(b));
+  const allHistoryMonths = Array.from(new Set(history.map(d => toYearMonth(d.MONTH)))).sort();
   const last8History = allHistoryMonths.slice(-8);
-  history = history.filter(d => last8History.includes(d.MONTH));
-  let forecast = dataForCard;
+  history = history.filter(d => last8History.includes(toYearMonth(d.MONTH)));
+  let forecast = lineData.filter(d => forecastMonths.includes(d.MONTH));
   const forecastMonthsLine = forecastMonths;
-  const lineLabels = [...last8History, ...forecastMonthsLine];
-  const historyMap = Object.fromEntries(history.map(d => [d.MONTH, d.ORIGINAL_SHIPPING_QTY]));
-  const optimistMap = Object.fromEntries(forecast.map(d => [d.MONTH, d.FORECAST_OPTIMIST]));
-  const neutralMap = Object.fromEntries(forecast.map(d => [d.MONTH, d.FORECAST_NEUTRAL]));
-  const pessimistMap = Object.fromEntries(forecast.map(d => [d.MONTH, d.FORECAST_PESSIMIST]));
+  const lineLabels = [...last8History, ...forecastMonthsLine.map(toYearMonth)];
+  const historyMap = Object.fromEntries(history.map(d => [toYearMonth(d.MONTH), d.ORIGINAL_SHIPPING_QTY]));
+  const optimistMap = Object.fromEntries(forecast.map(d => [toYearMonth(d.MONTH), d.FORECAST_OPTIMIST]));
+  const neutralMap = Object.fromEntries(forecast.map(d => [toYearMonth(d.MONTH), d.FORECAST_NEUTRAL]));
+  const pessimistMap = Object.fromEntries(forecast.map(d => [toYearMonth(d.MONTH), d.FORECAST_PESSIMIST]));
   const lineHistory = lineLabels.map(m => historyMap[m] || null);
   const lineOptimist = lineLabels.map(m => optimistMap[m] || null);
   const lineNeutral = lineLabels.map(m => neutralMap[m] || null);
@@ -486,10 +493,11 @@ function renderRealtimeDashboard() {
 function renderBacktestDashboard() {
   const partno = document.getElementById('partno-input').value.trim();
   const forecastMonths = getBacktestForecastMonths();
-  // Filter data forecast backtest
+  // Filter untuk cards & bar chart
   const filtered = getFilteredForecastData(backtestData, partno, selectedBacktestMonths, forecastMonths);
-  // Jika filter kosong, tampilkan seluruh data forecast backtest
   const dataForCard = filtered.length > 0 ? filtered : backtestData.filter(d => forecastMonths.includes(d.MONTH));
+  // Filter untuk line chart (hanya partno)
+  const lineData = getFilteredLineData(backtestData, partno);
 
   // Update card: total forecast qty dan error di bulan backtest
   const sumForecast = dataForCard.reduce((a, b) => a + (Number(b.FORECAST)||0), 0);
@@ -497,31 +505,31 @@ function renderBacktestDashboard() {
   document.getElementById('card-backtest-qty-value').textContent = sumForecast.toLocaleString();
   document.getElementById('card-backtest-error-value').textContent = avgError.toFixed(2) + '%';
 
-  // Column chart: hanya bulan backtest
-  const chartMonths = forecastMonths.filter(m => dataForCard.some(d => d.MONTH === m));
-  const barLabels = chartMonths;
-  const forecastBar = barLabels.map(m => dataForCard.filter(d => d.MONTH === m).reduce((a, b) => a + (Number(b.FORECAST)||0), 0));
-  const actualBar = barLabels.map(m => dataForCard.filter(d => d.MONTH === m).reduce((a, b) => a + (Number(b.ACTUAL)||0), 0));
+  // Bar chart: count best model (jumlah partno per model)
+  const modelCounts = {};
+  dataForCard.forEach(d => {
+    if (d.BEST_MODEL) modelCounts[d.BEST_MODEL] = (modelCounts[d.BEST_MODEL] || 0) + 1;
+  });
+  const modelLabels = Object.keys(modelCounts);
+  const modelData = Object.values(modelCounts);
   if (backtestBarChart) backtestBarChart.destroy();
   const ctxBar = document.getElementById('backtest-bar-chart').getContext('2d');
   backtestBarChart = new Chart(ctxBar, {
     type: 'bar',
     data: {
-      labels: barLabels,
+      labels: modelLabels,
       datasets: [
-        { label: 'Forecast', data: forecastBar, backgroundColor: 'rgba(54, 162, 235, 0.6)' },
-        { label: 'Actual', data: actualBar, backgroundColor: 'rgba(200, 200, 200, 0.3)' }
+        { label: 'Best Model', data: modelData, backgroundColor: 'rgba(54, 162, 235, 0.6)' }
       ]
     },
-    options: { responsive: true, plugins: { legend: { position: 'top' } } }
+    options: { responsive: true, plugins: { legend: { display: false } } }
   });
 
-  // Line chart: seluruh bulan backtest (tidak terfilter bulan, hanya partno)
-  let dataLine = backtestData;
-  if (partno) dataLine = dataLine.filter(d => d.PART_NO && d.PART_NO.toLowerCase().includes(partno.toLowerCase()));
-  const monthsLine = Array.from(new Set(dataLine.map(d => d.MONTH))).sort((a, b) => new Date(a) - new Date(b));
+  // Line chart: seluruh bulan backtest (hanya filter partno, label YYYY-MM)
+  let dataLine = lineData;
+  const monthsLine = Array.from(new Set(dataLine.map(d => toYearMonth(d.MONTH)))).sort();
   const monthMap = {};
-  dataLine.forEach(d => { monthMap[d.MONTH] = d; });
+  dataLine.forEach(d => { monthMap[toYearMonth(d.MONTH)] = d; });
   const forecast = monthsLine.map(m => monthMap[m] ? Number(monthMap[m].FORECAST) : null);
   const actual = monthsLine.map(m => monthMap[m] ? Number(monthMap[m].ACTUAL) : null);
   if (backtestLineChart) backtestLineChart.destroy();
