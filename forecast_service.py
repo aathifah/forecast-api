@@ -25,29 +25,53 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Forecasting Methods
+# Strategi Hybrid WMA:
+# - Backtesting: Optimisasi bobot dengan minimize untuk mendekati nilai aktual
+# - Real-time: WMA adaptif berdasarkan korelasi dan stabilitas data
+
 def forecast_ma6(series):
     return np.mean(series[-6:])
 
 def forecast_wma(series, actual=None, window=6):
+    """
+    WMA dengan strategi hybrid:
+    - Backtesting: Gunakan minimize untuk optimisasi bobot mendekati nilai aktual
+    - Real-time: Gunakan WMA adaptif (korelasi + stabilitas)
+    
+    Parameters:
+    - series: historical data
+    - actual: actual value (untuk backtesting)
+    - window: number of periods
+    """
     if len(series) < window:
         return np.nan
-    if actual is None:
-        return np.mean(series[-window:])
-    def objective(weights):
-        weights = np.array(weights)
-        weights /= weights.sum()
-        forecast = np.sum(series[-window:] * weights)
-        return abs(forecast - actual)
-    bounds = [(0, 1)] * window
-    constraints = [{'type': 'eq', 'fun': lambda w: np.sum(w) - 1}]
-    init_weights = np.repeat(1 / window, window)
-    result = minimize(objective, init_weights, bounds=bounds, constraints=constraints)
-    if result.success:
-        weights = result.x / result.x.sum()
-        forecast = np.sum(series[-window:] * weights)
-        return max(forecast, 0)
+    
+    # CASE 1: BACKTESTING (dengan nilai aktual) - Optimisasi bobot dengan minimize
+    if actual is not None:
+        def objective(weights):
+            weights = np.array(weights)
+            weights /= weights.sum()
+            forecast = np.sum(series[-window:] * weights)
+            return abs(forecast - actual)
+        
+        bounds = [(0, 1)] * window
+        constraints = [{'type': 'eq', 'fun': lambda w: np.sum(w) - 1}]
+        init_weights = np.repeat(1 / window, window)
+        result = minimize(objective, init_weights, bounds=bounds, constraints=constraints)
+        
+        if result.success:
+            optimal_weights = result.x / result.x.sum()
+            forecast = np.sum(series[-window:] * optimal_weights)
+            return max(forecast, 0)
+        else:
+            # Fallback ke WMA tradisional jika optimisasi gagal
+            weights = np.arange(1, window + 1) / np.arange(1, window + 1).sum()
+            forecast = np.sum(series[-window:] * weights)
+            return max(forecast, 0)
+    
+    # CASE 2: REAL-TIME FORECASTING (tanpa nilai aktual) - WMA adaptif
     else:
-        return max(np.mean(series[-window:]), 0)
+        return forecast_wma_adaptive_realtime(series, window)
 
 def forecast_ets(series, val_size=3):
     if len(series) < (val_size + 3):
@@ -64,7 +88,7 @@ def forecast_ets(series, val_size=3):
         for beta in param_grid['smoothing_slope']:
             try:
                 model = ExponentialSmoothing(train, trend='add' if beta is not None else None, seasonal=None, initialization_method="estimated")
-                fit = model.fit(smoothing_level=alpha, smoothing_slope=beta)
+                fit = model.fit(smoothing_level=alpha, smoothing_trend=beta)
                 forecast_val = fit.forecast(len(val))
                 mape_val = mean_absolute_percentage_error(val, forecast_val)
                 if mape_val < best_mape:
@@ -116,6 +140,84 @@ def forecast_arima(series, val_size=6):
             return full_model.predict(n_periods=1)[0]
     except:
         return np.nan
+
+def forecast_wma_adaptive_realtime(series, window=6, min_history=12):
+    """
+    WMA adaptif untuk real-time forecasting
+    Berdasarkan analisis korelasi dan stabilitas data
+    
+    Parameters:
+    - series: historical data
+    - window: number of periods
+    - min_history: minimal data untuk analisis (default: 12)
+    """
+    if len(series) < window:
+        return np.nan
+    
+    # Fallback ke WMA tradisional jika data tidak cukup
+    if len(series) < min_history:
+        weights = np.arange(1, window + 1) / np.arange(1, window + 1).sum()
+        forecast = np.sum(series[-window:] * weights)
+        return max(forecast, 0)
+    
+    # Ambil data untuk analisis (semua data kecuali window terakhir)
+    analysis_data = series[:-window]
+    recent_data = series[-window:]
+    
+    # 1. Analisis korelasi setiap posisi dengan nilai berikutnya
+    correlations = []
+    for pos in range(window):
+        pos_correlations = []
+        for i in range(len(analysis_data) - window):
+            window_data = analysis_data[i:i+window]
+            next_value = analysis_data[i+window]
+            correlation = np.corrcoef([window_data[pos]], [next_value])[0,1]
+            if not np.isnan(correlation):
+                pos_correlations.append(correlation)
+        
+        # Rata-rata korelasi untuk posisi ini
+        if pos_correlations:
+            avg_corr = np.mean(pos_correlations)
+            correlations.append(avg_corr)
+        else:
+            correlations.append(0.5)  # Default jika tidak ada korelasi
+    
+    # 2. Analisis volatilitas setiap posisi
+    volatilities = []
+    for pos in range(window):
+        pos_values = []
+        for i in range(len(analysis_data) - window):
+            window_data = analysis_data[i:i+window]
+            pos_values.append(window_data[pos])
+        
+        if pos_values:
+            volatility = np.std(pos_values)
+            volatilities.append(volatility)
+        else:
+            volatilities.append(1.0)  # Default
+    
+    # 3. Kombinasi bobot: korelasi + stabilitas
+    # Normalisasi korelasi (semakin tinggi korelasi, semakin tinggi bobot)
+    norm_correlations = np.array(correlations) / np.sum(correlations)
+    
+    # Normalisasi volatilitas (semakin rendah volatilitas, semakin tinggi bobot)
+    norm_volatilities = 1 / (np.array(volatilities) + 1e-8)  # +1e-8 untuk avoid division by zero
+    norm_volatilities = norm_volatilities / np.sum(norm_volatilities)
+    
+    # Kombinasi bobot (bisa disesuaikan)
+    alpha, beta = 0.7, 0.3  # Bobot untuk korelasi, stabilitas
+    adaptive_weights = (alpha * norm_correlations + 
+                       beta * norm_volatilities)
+    
+    # Normalisasi final
+    adaptive_weights = adaptive_weights / np.sum(adaptive_weights)
+    
+    # 4. Hitung forecast
+    forecast = np.sum(recent_data * adaptive_weights)
+    
+    return max(forecast, 0)
+
+
 
 # Helper Functions
 mape_scorer_sklearn = make_scorer(mean_absolute_percentage_error, greater_is_better=False)
@@ -304,7 +406,7 @@ def process_part(part, part_df, test_months):
                 preds[name] = np.nan
 
         errors = {m: hybrid_error(actual, p) for m, p in preds.items()}
-        best_model_name = min(errors, key=errors.get)
+        best_model_name = min(errors, key=lambda x: errors[x])
 
         part_results.append({
             'PART_NO': part,
@@ -373,7 +475,7 @@ def run_combined_forecast(df):
         for part in tqdm(part_list, desc="Processing parts")
     )
 
-    results = [item for sublist in results_nested for item in sublist]
+    results = [item for sublist in results_nested if sublist is not None for item in sublist]
     forecast_df = pd.DataFrame(results)
 
     logger.info("Backtest completed successfully")
@@ -516,6 +618,21 @@ def run_real_time_forecast(original_df, forecast_df):
         # --- Recursive Forecasting ---
         future_series = list(series)
         future_df_f = df_f.copy() if df_f is not None else None
+        
+        # === LOGIKA PERSENTASE BERDASARKAN DEMAND ===
+        # Hitung rata-rata demand per bulan untuk part ini (dari data historis)
+        avg_monthly_demand = np.mean(series) if len(series) > 0 else 0
+        
+        # Tentukan persentase berdasarkan rata-rata demand
+        if avg_monthly_demand < 500:
+            # Part dengan demand < 500 pcs/bulan
+            optimist_percent = 1.15  # +15%
+            pessimist_percent = 0.80  # -20%
+        else:
+            # Part dengan demand >= 500 pcs/bulan
+            optimist_percent = 1.07  # +7%
+            pessimist_percent = 0.93  # -7%
+        
         for idx, month in enumerate(forecast_months):
             # Buat lag dari future_series
             lags = [future_series[-i] if len(future_series) >= i else 0 for i in range(1, 7)]
@@ -542,7 +659,7 @@ def run_real_time_forecast(original_df, forecast_df):
                 # Categorical: gunakan nilai terakhir
                 for col in cat_cols:
                     test_row[col] = future_df_f[col].iloc[-1] if col in future_df_f.columns and not future_df_f.empty else 0
-                X_test = pd.DataFrame([test_row], columns=features)
+                X_test = pd.DataFrame([test_row])
                 y_pred = model_trained.predict(X_test)
                 fc = float(y_pred[0]) if len(y_pred) > 0 else 0
                 # Tambahkan ke future_df_f
@@ -560,9 +677,9 @@ def run_real_time_forecast(original_df, forecast_df):
                 'PART_NO': part,
                 'MONTH': month.strftime('%Y-%m'),
                 'BEST_MODEL': best_model,
-                'FORECAST_OPTIMIST': max(round(fc * 1.15), 0),
+                'FORECAST_OPTIMIST': max(round(fc * optimist_percent), 0),
                 'FORECAST_NEUTRAL': max(round(fc), 0),
-                'FORECAST_PESSIMIST': max(round(fc * 0.8), 0),
+                'FORECAST_PESSIMIST': max(round(fc * pessimist_percent), 0),
                 'ERROR_BACKTEST': f"{round(mape_val, 2)}%"
             })
     
@@ -586,7 +703,7 @@ def process_forecast(df):
         
         # Create Excel file in memory
         output = io.BytesIO()
-        with ExcelWriter(output, engine='openpyxl') as writer:
+        with ExcelWriter(output, engine='openpyxl', mode='w') as writer:
             real_time_forecast.to_excel(writer, sheet_name='Forecast_Results', index=False)
             
             # Add summary sheet
@@ -630,3 +747,50 @@ def process_forecast(df):
             "message": f"Forecast processing failed: {str(e)}",
             "data": None
         }
+
+def example_wma_usage():
+    """
+    Contoh penggunaan fungsi forecast_wma untuk berbagai skenario
+    """
+    import numpy as np
+    
+    # Data contoh: 6 bulan terakhir
+    historical_data = [100, 120, 110, 130, 140, 125]
+    
+    print("=== CONTOH PENGGUNAAN WMA HYBRID ===\n")
+    
+    # 1. BACKTESTING (dengan nilai aktual untuk optimisasi)
+    actual_value = 135
+    print("1. BACKTESTING (Optimisasi Bobot dengan minimize):")
+    print(f"   Data historis: {historical_data}")
+    print(f"   Nilai aktual: {actual_value}")
+    
+    # WMA dengan optimisasi bobot (backtesting)
+    forecast_backtest = forecast_wma(historical_data, actual=actual_value)
+    print(f"   Prediksi WMA (optimisasi): {forecast_backtest:.2f}")
+    
+    # Error
+    error_backtest = abs(forecast_backtest - actual_value)
+    print(f"   Error: {error_backtest:.2f}")
+    
+    # 2. REAL-TIME FORECASTING (tanpa nilai aktual)
+    print("\n2. REAL-TIME FORECASTING (WMA Adaptif):")
+    print(f"   Data historis: {historical_data}")
+    print(f"   Nilai aktual: Tidak tersedia (prediksi masa depan)")
+    
+    # WMA adaptif untuk real-time
+    forecast_realtime = forecast_wma(historical_data, actual=None)
+    print(f"   Prediksi WMA Adaptif: {forecast_realtime:.2f}")
+    
+    print("\n3. PENJELASAN STRATEGI:")
+    print("   - Backtesting: Menggunakan minimize untuk optimisasi bobot")
+    print("   - Real-time: Menggunakan WMA adaptif (korelasi + stabilitas)")
+    
+    # Contoh bobot tradisional untuk perbandingan
+    weights_traditional = np.arange(1, 7) / np.arange(1, 7).sum()
+    print(f"\n4. Bobot WMA Tradisional: {weights_traditional}")
+    print(f"   (Data terbaru mendapat bobot tertinggi: {weights_traditional[-1]:.3f})")
+    
+    # Hitung manual untuk verifikasi
+    manual_calc = sum(historical_data[i] * weights_traditional[i] for i in range(6))
+    print(f"   Perhitungan manual: {manual_calc:.2f}")
