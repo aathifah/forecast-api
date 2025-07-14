@@ -158,40 +158,45 @@ function toYearMonth(str) {
   return str.slice(0, 7);
 }
 
-// Fungsi untuk mengisi dropdown bulan real-time (hanya bulan real time forecast, multiple, dengan opsi Semua Bulan)
-function populateRealtimeDropdown() {
-  const bulanDropdown = document.getElementById('bulan-dropdown');
-  if (!bulanDropdown) return;
-  // Ambil hanya bulan dari realtimeData
-  const months = Array.from(new Set(realtimeData.map(d => d.MONTH))).sort((a, b) => new Date(a) - new Date(b));
-  bulanDropdown.innerHTML = '';
-  // Opsi "Semua Bulan Real Time Forecast"
-  const allOpt = document.createElement('option');
-  allOpt.value = '__ALL__';
-  allOpt.textContent = 'Semua Bulan Real Time Forecast';
-  bulanDropdown.appendChild(allOpt);
+// Helper: isi dropdown bulan dengan bulan yang tersedia di data
+function populateMonthDropdown(dropdownId, data, monthField) {
+  const dropdown = document.getElementById(dropdownId);
+  if (!dropdown) return;
+  const months = Array.from(new Set(data.map(d => d[monthField]))).sort((a, b) => new Date(a) - new Date(b));
+  dropdown.innerHTML = '';
   months.forEach(m => {
     const opt = document.createElement('option');
     opt.value = m;
     opt.textContent = m.replace(/T.*$/, '');
-    bulanDropdown.appendChild(opt);
+    dropdown.appendChild(opt);
   });
 }
 
-function getSelectedRealtimeMonths() {
-  const bulanDropdown = document.getElementById('bulan-dropdown');
-  if (!bulanDropdown) return [];
-  const selected = Array.from(bulanDropdown.selectedOptions).map(opt => opt.value);
-  if (selected.includes('__ALL__') || selected.length === 0) {
-    // Jika pilih "Semua Bulan" atau tidak pilih apapun, return semua bulan real time
-    return Array.from(new Set(realtimeData.map(d => d.MONTH))).sort((a, b) => new Date(a) - new Date(b));
+function getSelectedMonths(dropdownId, data) {
+  const dropdown = document.getElementById(dropdownId);
+  if (!dropdown) return [];
+  const selected = Array.from(dropdown.selectedOptions).map(opt => opt.value);
+  if (selected.length === 0) {
+    // Jika tidak pilih apapun, return semua bulan
+    return Array.from(new Set(data.map(d => d.MONTH))).sort((a, b) => new Date(a) - new Date(b));
   }
   return selected;
 }
 
+// Gabungkan filter Part Number
+function getFilteredData(data, partno, selectedMonths) {
+  let filtered = data;
+  if (partno) {
+    filtered = filtered.filter(d => d.PART_NO && d.PART_NO.toLowerCase().includes(partno.toLowerCase()));
+  }
+  if (selectedMonths && selectedMonths.length > 0) {
+    filtered = filtered.filter(d => selectedMonths.includes(d.MONTH));
+  }
+  return filtered;
+}
+
 // Fungsi render cards forecast
 function renderForecastCards(filteredData) {
-  // Total qty forecast (optimist, neutral, pessimist)
   const totalOptimist = filteredData.reduce((sum, d) => sum + (Number(d.FORECAST_OPTIMIST) || 0), 0);
   const totalNeutral = filteredData.reduce((sum, d) => sum + (Number(d.FORECAST_NEUTRAL) || 0), 0);
   const totalPessimist = filteredData.reduce((sum, d) => sum + (Number(d.FORECAST_PESSIMIST) || 0), 0);
@@ -200,24 +205,17 @@ function renderForecastCards(filteredData) {
   document.getElementById('card-pessimist-value').textContent = totalPessimist.toLocaleString();
 }
 
-// Fungsi render chart real-time (line chart: 8 bulan terakhir history + 4 bulan real time forecast, 4 garis)
 function renderRealtimeDashboard() {
   const partno = document.getElementById('partno-input').value.trim();
-  const start = document.getElementById('realtime-month-start').value;
-  const end = document.getElementById('realtime-month-end').value;
-  // --- Data untuk cards & column chart ---
-  let data = realtimeData;
-  if (partno) data = data.filter(d => d.PART_NO === partno);
-  // Filter bulan (range, hanya untuk cards & bar chart)
-  let dataForCardAndBar = filterByMonthRange(data, start, end);
+  const selectedMonths = getSelectedMonths('realtime-month-dropdown', realtimeData);
+  let data = getFilteredData(realtimeData, partno, selectedMonths);
   // Pastikan hanya 1 data per bulan (ambil data terakhir jika duplikat)
   const monthMap = {};
-  dataForCardAndBar.forEach(d => { monthMap[d.MONTH] = d; });
+  data.forEach(d => { monthMap[d.MONTH] = d; });
   const uniqueMonths = Object.keys(monthMap).sort((a, b) => new Date(a) - new Date(b));
   const uniqueData = uniqueMonths.map(m => monthMap[m]);
-  // Render cards
   renderForecastCards(uniqueData);
-  // Column chart: hanya bulan real time forecast, filter by part_no & bulan
+  // Column chart
   const barLabels = uniqueData.map(d => toYearMonth(d.MONTH));
   const optimist = uniqueData.map(d => d.FORECAST_OPTIMIST);
   const neutral = uniqueData.map(d => d.FORECAST_NEUTRAL);
@@ -236,25 +234,21 @@ function renderRealtimeDashboard() {
     },
     options: { responsive: true, plugins: { legend: { position: 'top' } } }
   });
-  // --- Data untuk line chart (8 bulan terakhir history + 4 bulan real time forecast, filter by part_no saja) ---
+  // Line chart (8 bulan terakhir history + 4 bulan real time forecast)
   let history = originalData;
-  if (partno) history = history.filter(d => d.PART_NO === partno);
+  if (partno) history = history.filter(d => d.PART_NO && d.PART_NO.toLowerCase().includes(partno.toLowerCase()));
   const allHistoryMonths = Array.from(new Set(history.map(d => d.MONTH))).sort((a, b) => new Date(a) - new Date(b));
   const last8History = allHistoryMonths.slice(-8);
   history = history.filter(d => last8History.includes(d.MONTH));
-  let forecast = realtimeData;
-  if (partno) forecast = forecast.filter(d => d.PART_NO === partno);
-  const forecastMonths = Array.from(new Set(forecast.map(d => d.MONTH))).sort((a, b) => new Date(a) - new Date(b));
+  let forecast = uniqueData;
+  const forecastMonths = uniqueMonths;
   const last4Forecast = forecastMonths.slice(-4);
   forecast = forecast.filter(d => last4Forecast.includes(d.MONTH));
-  // Gabungkan label bulan, semua dalam format YYYY-MM
   const lineLabels = [...last8History, ...last4Forecast].map(toYearMonth);
-  // Data
   const historyMap = Object.fromEntries(history.map(d => [toYearMonth(d.MONTH), d.ORIGINAL_SHIPPING_QTY]));
   const optimistMap = Object.fromEntries(forecast.map(d => [toYearMonth(d.MONTH), d.FORECAST_OPTIMIST]));
   const neutralMap = Object.fromEntries(forecast.map(d => [toYearMonth(d.MONTH), d.FORECAST_NEUTRAL]));
   const pessimistMap = Object.fromEntries(forecast.map(d => [toYearMonth(d.MONTH), d.FORECAST_PESSIMIST]));
-  // Datasets
   const lineHistory = lineLabels.map(m => historyMap[m] || null);
   const lineOptimist = lineLabels.map(m => optimistMap[m] || null);
   const lineNeutral = lineLabels.map(m => neutralMap[m] || null);
@@ -276,61 +270,8 @@ function renderRealtimeDashboard() {
   });
 }
 
-// ===== BACKTESTING DASHBOARD BARU =====
-function getBacktestMonths() {
-  // Ambil semua bulan unik dari backtestData
-  const months = Array.from(new Set(backtestData.map(d => d.MONTH)));
-  // Urutkan
-  return months.sort((a, b) => new Date(a) - new Date(b));
-}
-
-function populateBacktestDropdown() {
-  const bulanDropdown = document.getElementById('bulan-backtest-dropdown');
-  if (!bulanDropdown) return;
-  const months = getBacktestMonths();
-  bulanDropdown.innerHTML = '';
-  // Opsi "Semua Bulan"
-  const allOpt = document.createElement('option');
-  allOpt.value = '__ALL__';
-  allOpt.textContent = 'Semua Bulan';
-  bulanDropdown.appendChild(allOpt);
-  months.forEach(m => {
-    const opt = document.createElement('option');
-    opt.value = m;
-    opt.textContent = m.replace(/T.*$/, '');
-    bulanDropdown.appendChild(opt);
-  });
-}
-
-function getSelectedBacktestMonths() {
-  const bulanDropdown = document.getElementById('bulan-backtest-dropdown');
-  if (!bulanDropdown) return [];
-  const selected = Array.from(bulanDropdown.selectedOptions).map(opt => opt.value);
-  if (selected.includes('__ALL__') || selected.length === 0) {
-    // Jika pilih "Semua Bulan" atau tidak pilih apapun, return semua bulan
-    return getBacktestMonths();
-  }
-  return selected;
-}
-
-function filterBacktestData(partno, months) {
-  let data = backtestData;
-  if (partno) {
-    data = data.filter(d => d.PART_NO && d.PART_NO.toLowerCase().includes(partno.toLowerCase()));
-  }
-  if (months && months.length > 0) {
-    data = data.filter(d => months.includes(d.MONTH));
-  }
-  return data;
-}
-
-function renderBacktestCards() {
-  const partno = document.getElementById('partno-backtest-input').value.trim();
-  const months = getSelectedBacktestMonths();
-  const filtered = filterBacktestData(partno, months);
-  // Forecast QTY: jumlah total kolom FORECAST
+function renderBacktestCards(filtered) {
   const qty = filtered.reduce((sum, d) => sum + (Number(d.FORECAST) || 0), 0);
-  // Average Error: rata-rata kolom HYBRID_ERROR (asumsi persen string, misal '5%')
   const errors = filtered.map(d => {
     if (typeof d.HYBRID_ERROR === 'string' && d.HYBRID_ERROR.includes('%')) {
       return parseFloat(d.HYBRID_ERROR.replace('%', ''));
@@ -342,39 +283,12 @@ function renderBacktestCards() {
   document.getElementById('card-backtest-error-value').textContent = avgError.toFixed(2) + '%';
 }
 
-function renderBacktestLineChart() {
-  const partno = document.getElementById('partno-backtest-input').value.trim();
-  // Untuk line chart, filter hanya partno, semua bulan
-  let data = backtestData;
-  if (partno) {
-    data = data.filter(d => d.PART_NO && d.PART_NO.toLowerCase().includes(partno.toLowerCase()));
-  }
-  // Urutkan bulan
-  const months = Array.from(new Set(data.map(d => d.MONTH))).sort((a, b) => new Date(a) - new Date(b));
-  const monthMap = {};
-  data.forEach(d => { monthMap[d.MONTH] = d; });
-  const forecast = months.map(m => monthMap[m] ? Number(monthMap[m].FORECAST) : null);
-  const actual = months.map(m => monthMap[m] ? Number(monthMap[m].ACTUAL) : null);
-  if (backtestLineChart) backtestLineChart.destroy();
-  const ctxLine = document.getElementById('backtest-line-chart').getContext('2d');
-  backtestLineChart = new Chart(ctxLine, {
-    type: 'line',
-    data: {
-      labels: months.map(m => m.replace(/T.*$/, '')),
-      datasets: [
-        { label: 'Forecast', data: forecast, borderColor: '#2196f3', backgroundColor: 'rgba(33,150,243,0.1)', tension: 0.2 },
-        { label: 'Actual', data: actual, borderColor: '#aaa', backgroundColor: 'rgba(200,200,200,0.1)', tension: 0.2 }
-      ]
-    },
-    options: { responsive: true, plugins: { legend: { position: 'top' } } }
-  });
-}
-
-function renderBacktestBarChart() {
-  const partno = document.getElementById('partno-backtest-input').value.trim();
-  const months = getSelectedBacktestMonths();
-  const filtered = filterBacktestData(partno, months);
-  // Hitung distribusi BEST_MODEL
+function renderBacktestDashboard() {
+  const partno = document.getElementById('partno-input').value.trim();
+  const selectedMonths = getSelectedMonths('backtest-month-dropdown', backtestData);
+  let filtered = getFilteredData(backtestData, partno, selectedMonths);
+  renderBacktestCards(filtered);
+  // Bar chart: Best Model count
   const modelCounts = {};
   filtered.forEach(d => {
     if (d.BEST_MODEL) modelCounts[d.BEST_MODEL] = (modelCounts[d.BEST_MODEL] || 0) + 1;
@@ -393,57 +307,10 @@ function renderBacktestBarChart() {
     },
     options: { responsive: true, plugins: { legend: { display: false } } }
   });
-}
-
-function renderBacktestDashboard() {
-  const partno = document.getElementById('partno-backtest-input').value.trim();
-  const start = document.getElementById('backtest-month-start').value;
-  const end = document.getElementById('backtest-month-end').value;
-  let months = null; // not used anymore
-  let data = backtestData;
-  if (partno) {
-    data = data.filter(d => d.PART_NO && d.PART_NO.toLowerCase().includes(partno.toLowerCase()));
-  }
-  // Filter bulan (range, hanya untuk cards & bar chart)
-  let dataForCardAndBar = filterByMonthRange(data, start, end);
-  // Cards
-  const qty = dataForCardAndBar.reduce((sum, d) => sum + (Number(d.FORECAST) || 0), 0);
-  const errors = dataForCardAndBar.map(d => {
-    if (typeof d.HYBRID_ERROR === 'string' && d.HYBRID_ERROR.includes('%')) {
-      return parseFloat(d.HYBRID_ERROR.replace('%', ''));
-    }
-    return Number(d.HYBRID_ERROR) || 0;
-  });
-  const avgError = errors.length ? errors.reduce((a, b) => a + b, 0) / errors.length : 0;
-  document.getElementById('card-backtest-qty-value').textContent = qty.toLocaleString();
-  document.getElementById('card-backtest-error-value').textContent = avgError.toFixed(2) + '%';
-  // Bar chart: Best Model count
-  const modelCounts = {};
-  dataForCardAndBar.forEach(d => {
-    if (d.BEST_MODEL) modelCounts[d.BEST_MODEL] = (modelCounts[d.BEST_MODEL] || 0) + 1;
-  });
-  const modelLabels = Object.keys(modelCounts);
-  const modelData = Object.values(modelCounts);
-  if (backtestBarChart) backtestBarChart.destroy();
-  const ctxBar = document.getElementById('backtest-bar-chart').getContext('2d');
-  backtestBarChart = new Chart(ctxBar, {
-    type: 'bar',
-    data: {
-      labels: modelLabels,
-      datasets: [
-        { label: 'Best Model', data: modelData, backgroundColor: 'rgba(54, 162, 235, 0.6)' }
-      ]
-    },
-    options: { responsive: true, plugins: { legend: { display: false } } }
-  });
-  // Line chart: tetap filter partno saja, semua bulan
-  let lineData = backtestData;
-  if (partno) {
-    lineData = lineData.filter(d => d.PART_NO && d.PART_NO.toLowerCase().includes(partno.toLowerCase()));
-  }
-  const monthsLine = Array.from(new Set(lineData.map(d => d.MONTH))).sort((a, b) => new Date(a) - new Date(b));
+  // Line chart
+  const monthsLine = Array.from(new Set(filtered.map(d => d.MONTH))).sort((a, b) => new Date(a) - new Date(b));
   const monthMap = {};
-  lineData.forEach(d => { monthMap[d.MONTH] = d; });
+  filtered.forEach(d => { monthMap[d.MONTH] = d; });
   const forecast = monthsLine.map(m => monthMap[m] ? Number(monthMap[m].FORECAST) : null);
   const actual = monthsLine.map(m => monthMap[m] ? Number(monthMap[m].ACTUAL) : null);
   if (backtestLineChart) backtestLineChart.destroy();
@@ -461,10 +328,13 @@ function renderBacktestDashboard() {
   });
 }
 
-function setupBacktestListeners() {
-  document.getElementById('partno-backtest-input').addEventListener('input', renderBacktestDashboard);
-  document.getElementById('backtest-month-start').addEventListener('change', renderBacktestDashboard);
-  document.getElementById('backtest-month-end').addEventListener('change', renderBacktestDashboard);
+function setupDashboardListeners() {
+  document.getElementById('partno-input').addEventListener('input', () => {
+    renderRealtimeDashboard();
+    renderBacktestDashboard();
+  });
+  document.getElementById('realtime-month-dropdown').addEventListener('change', renderRealtimeDashboard);
+  document.getElementById('backtest-month-dropdown').addEventListener('change', renderBacktestDashboard);
 }
 
 // Event listener input PartNo & Bulan (multiple select)
@@ -483,10 +353,11 @@ window.addEventListener('DOMContentLoaded', () => {
   originalData = dummyOriginal;
   backtestData = dummyBacktest;
   realtimeData = dummyRealtime;
+  populateMonthDropdown('realtime-month-dropdown', realtimeData, 'MONTH');
+  populateMonthDropdown('backtest-month-dropdown', backtestData, 'MONTH');
   renderRealtimeDashboard();
   renderBacktestDashboard();
   setupDashboardListeners();
-  setupBacktestListeners();
 });
 
 // Event listener untuk tombol proses forecast
@@ -562,8 +433,8 @@ if (processBtn && fileInput && statusDiv && progressBarContainer && progressBar 
         originalData = data.original_df;
         backtestData = data.forecast_df;
         realtimeData = data.real_time_forecast;
-        populateRealtimeDropdown(); // Update dropdown after backend data
-        populateBacktestDropdown(); // Update dropdown after backend data
+        populateMonthDropdown('realtime-month-dropdown', realtimeData, 'MONTH');
+        populateMonthDropdown('backtest-month-dropdown', backtestData, 'MONTH');
         renderRealtimeDashboard();
         renderBacktestDashboard();
       }
