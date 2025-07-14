@@ -158,6 +158,18 @@ function toYearMonth(str) {
   return str.slice(0, 7);
 }
 
+// Fungsi filter data berdasarkan partno dan bulan
+function getFilteredData(data, partno, selectedMonths) {
+  let filtered = data;
+  if (partno) {
+    filtered = filtered.filter(d => d.PART_NO && d.PART_NO.toLowerCase().includes(partno.toLowerCase()));
+  }
+  if (selectedMonths && selectedMonths.length > 0) {
+    filtered = filtered.filter(d => selectedMonths.includes(d.MONTH));
+  }
+  return filtered;
+}
+
 // Fungsi render cards forecast
 function renderForecastCards(filteredData) {
   const totalOptimist = filteredData.reduce((sum, d) => sum + (Number(d.FORECAST_OPTIMIST) || 0), 0);
