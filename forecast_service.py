@@ -171,7 +171,7 @@ def forecast_wma_adaptive_realtime(series, window=6, min_history=12):
         for i in range(len(analysis_data) - window):
             window_data = analysis_data[i:i+window]
             next_value = analysis_data[i+window]
-            correlation = np.corrcoef([window_data[pos]], [next_value])[0,1]
+            correlation = np.corrcoef([window_data.iloc[pos]], [next_value])[0,1]
             if not np.isnan(correlation):
                 pos_correlations.append(correlation)
         
@@ -188,7 +188,7 @@ def forecast_wma_adaptive_realtime(series, window=6, min_history=12):
         pos_values = []
         for i in range(len(analysis_data) - window):
             window_data = analysis_data[i:i+window]
-            pos_values.append(window_data[pos])
+            pos_values.append(window_data.iloc[pos])
         
         if pos_values:
             volatility = np.std(pos_values)
