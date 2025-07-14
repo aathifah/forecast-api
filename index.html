@@ -323,14 +323,19 @@
   <script src="/static/script.js" defer></script>
   <!-- Chart.js CDN -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- Tambahkan Flatpickr dan plugin monthSelect -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/plugins/monthSelect/index.js"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/plugins/monthSelect/style.css">
 
   <div class="dashboard-2col">
     <div class="dashboard-content" id="realtime-dashboard-content">
       <div class="dashboard-filters">
         <input type="text" id="partno-input" placeholder="Cari Part Number" class="slicer-input">
         <div class="month-range-group">
-          <label for="realtime-month-dropdown" style="color:#bfc9d1;font-size:0.95em;margin-bottom:2px;">Pilih Bulan</label>
-          <select id="realtime-month-dropdown" class="month-range-input" multiple></select>
+          <label for="realtime-month-picker" style="color:#bfc9d1;font-size:0.95em;margin-bottom:2px;">Pilih Bulan</label>
+          <input type="text" id="realtime-month-picker" class="month-range-input" placeholder="Pilih rentang bulan" readonly>
         </div>
       </div>
       <section id="realtime-dashboard">
@@ -358,8 +363,8 @@
     <div class="dashboard-content" id="backtest-dashboard-content">
       <div class="dashboard-filters">
         <div class="month-range-group">
-          <label for="backtest-month-dropdown" style="color:#bfc9d1;font-size:0.95em;margin-bottom:2px;">Pilih Bulan</label>
-          <select id="backtest-month-dropdown" class="month-range-input" multiple></select>
+          <label for="backtest-month-picker" style="color:#bfc9d1;font-size:0.95em;margin-bottom:2px;">Pilih Bulan</label>
+          <input type="text" id="backtest-month-picker" class="month-range-input" placeholder="Pilih rentang bulan" readonly>
         </div>
       </div>
       <h2 style="color:#fff;">Hasil Pelatihan Prediksi di 4 Bulan Sebelumnya</h2>
