@@ -578,10 +578,12 @@ window.addEventListener('DOMContentLoaded', () => {
   if (processBtn) processBtn.disabled = false;
   updateProcessBtnState();
   console.log('DOMContentLoaded: script.js loaded, processBtn:', processBtn);
-  // Ganti dengan data dari backend nanti
-  originalData = dummyOriginal;
-  backtestData = dummyBacktest;
-  realtimeData = dummyRealtime;
+  // Dummy data hanya dipakai jika belum ada hasil upload
+  if (!originalData.length && !backtestData.length && !realtimeData.length) {
+    originalData = dummyOriginal;
+    backtestData = dummyBacktest;
+    realtimeData = dummyRealtime;
+  }
   setupMonthPickers();
   renderRealtimeDashboard();
   renderBacktestDashboard();
