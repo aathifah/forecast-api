@@ -329,9 +329,9 @@ def process_part(part, part_df, test_months):
 
         six_months_prior = pd.date_range(end=target_month - pd.offsets.MonthBegin(1), periods=6, freq='MS')
         recent_6_months_df = train_df[train_df['MONTH'].isin(six_months_prior)]
-        total_qty_last_6_months = recent_6_months_df['ORIGINAL_SHIPPING_QTY'].sum()
-
-        if total_qty_last_6_months < 2:
+        # Syarat: minimal 2 kali pemesanan (qty > 0) dalam 6 bulan terakhir
+        order_count = (recent_6_months_df['ORIGINAL_SHIPPING_QTY'] > 0).sum()
+        if order_count < 2:
             part_results.append({
                 'PART_NO': part,
                 'MONTH': target_month.strftime('%Y-%m'),
@@ -348,9 +348,9 @@ def process_part(part, part_df, test_months):
 
         preds = {
             'MA6': forecast_ma6(series),
-            'WMA': forecast_wma(pd.Series(series), actual=actual),
-            'ETS': forecast_ets(series),
-            'ARIMA': forecast_arima(series)
+            'WMA': forecast_wma(pd.Series(series), actual=actual) if order_count >= 2 else 0,
+            'ETS': forecast_ets(series) if order_count >= 2 else 0,
+            'ARIMA': forecast_arima(series) if order_count >= 2 else 0
         }
 
         train_df['ROLLING_MEAN_3'] = train_df['ORIGINAL_SHIPPING_QTY'].rolling(window=3).mean()
@@ -365,15 +365,7 @@ def process_part(part, part_df, test_months):
                     'ROLLING_MEAN_3', 'ROLLING_MEAN_6',
                     'ROLLING_STD_3', 'ROLLING_STD_6',
                     'GROWTH_LAG_3_6']
-
-        cat_cols = ['PART_NAME', 'TOPAS_ORDER_TYPE', 'CREATED_DEMAND_FLAG', 'CUST_TYPE2']
-        for col in cat_cols:
-            le = LabelEncoder()
-            all_vals = pd.concat([train_df[col], test_df[col]])
-            le.fit(all_vals)
-            train_df[col] = le.transform(train_df[col])
-            test_df[col] = le.transform(test_df[col])
-            features.append(col)
+        # Tidak ada proses LabelEncoder, tidak ada penambahan fitur kategorikal
 
         X_train, y_train = train_df[features], train_df['ORIGINAL_SHIPPING_QTY']
         X_test = test_df[features] if not test_df.empty else None
@@ -389,8 +381,8 @@ def process_part(part, part_df, test_months):
         }
 
         for name, model in ml_models.items():
-            if len(X_train) == 0:
-                preds[name] = np.nan
+            if len(X_train) == 0 or order_count < 2:
+                preds[name] = 0
                 continue
 
             model.fit(X_train, y_train)
@@ -403,7 +395,7 @@ def process_part(part, part_df, test_months):
                     tuned_pred, tuned_model = tune_model_if_needed(name, model, X_train, y_train, X_test, actual, pred, mape_threshold=0.2)
                     preds[name] = tuned_pred
             else:
-                preds[name] = np.nan
+                preds[name] = 0
 
         errors = {m: hybrid_error(actual, p) for m, p in preds.items()}
         best_model_name = min(errors, key=lambda x: errors[x])
@@ -527,6 +519,7 @@ def run_real_time_forecast(original_df, forecast_df):
     
     six_months_ago = last_month - pd.DateOffset(months=6)
     recent_data = df_all[df_all['MONTH'] > six_months_ago]
+    # Syarat: minimal 2 kali pemesanan (qty > 0) dalam 6 bulan terakhir
     valid_parts = recent_data[recent_data['ORIGINAL_SHIPPING_QTY'] > 0].groupby('PART_NO').size().reset_index(name='nonzero_count')
     valid_parts = valid_parts[valid_parts['nonzero_count'] >= 2]['PART_NO'].tolist()
     
@@ -539,14 +532,13 @@ def run_real_time_forecast(original_df, forecast_df):
                     'PART_NO': part,
                     'MONTH': month.strftime('%Y-%m'),
                     'BEST_MODEL': 'NoModel',
-                    'FORECAST': 0,
                     'FORECAST_OPTIMIST': 0,
                     'FORECAST_NEUTRAL': 0,
                     'FORECAST_PESSIMIST': 0,
                     'ERROR_BACKTEST': ''
                 })
             continue
-    
+
         model_info = latest_model_map[part]
         best_model = model_info['BEST_MODEL']
         mape_val = model_info['HYBRID_ERROR']
@@ -562,17 +554,33 @@ def run_real_time_forecast(original_df, forecast_df):
                     'PART_NO': part,
                     'MONTH': month.strftime('%Y-%m'),
                     'BEST_MODEL': best_model,
-                    'FORECAST': 0,
                     'FORECAST_OPTIMIST': 0,
                     'FORECAST_NEUTRAL': 0,
                     'FORECAST_PESSIMIST': 0,
                     'ERROR_BACKTEST': f"{round(mape_val, 2)}%"
                 })
             continue
-    
+
+        # Syarat: minimal 2 kali pemesanan (qty > 0) dalam 6 bulan terakhir
+        order_count = (hist[-6:] > 0).sum() if len(hist) >= 6 else (hist > 0).sum()
+        if order_count < 2:
+            for month in forecast_months:
+                results.append({
+                    'PART_NO': part,
+                    'MONTH': month.strftime('%Y-%m'),
+                    'BEST_MODEL': best_model,
+                    'FORECAST_OPTIMIST': 0,
+                    'FORECAST_NEUTRAL': 0,
+                    'FORECAST_PESSIMIST': 0,
+                    'ERROR_BACKTEST': f"{round(mape_val, 2)}%"
+                })
+            continue
+
         model_trained = None
-        cat_cols = ['PART_NAME', 'TOPAS_ORDER_TYPE', 'CREATED_DEMAND_FLAG', 'CUST_TYPE2']
-        features = []
+        features = ['LAG_1', 'LAG_2', 'LAG_3', 'LAG_4', 'LAG_5', 'LAG_6',
+                    'MONTH_NUM', 'YEAR', 'MONTH_SIN', 'MONTH_COS',
+                    'ROLLING_MEAN_3', 'ROLLING_MEAN_6', 'ROLLING_STD_3', 'ROLLING_STD_6', 'GROWTH_LAG_3_6']
+        
         df_f = None
         if best_model in ['LINREG', 'RF', 'XGB']:
             df_f = df_series.copy()
@@ -595,15 +603,6 @@ def run_real_time_forecast(original_df, forecast_df):
             if not df_f.empty:
                 features = [f'LAG_{i}' for i in range(1, 7)] + ['MONTH_NUM', 'YEAR', 'MONTH_SIN', 'MONTH_COS',
                             'ROLLING_MEAN_3', 'ROLLING_MEAN_6', 'ROLLING_STD_3', 'ROLLING_STD_6', 'GROWTH_LAG_3_6']
-        
-                part_data = df_all[df_all['PART_NO'] == part].copy()
-                for col in cat_cols:
-                    if col in part_data.columns:
-                        le = LabelEncoder()
-                        vals = part_data[col].fillna('NA').astype(str)
-                        le.fit(vals)
-                        df_f[col] = le.transform(df_f['MONTH'].map(lambda d: vals.iloc[part_data['MONTH'].searchsorted(d)] if part_data['MONTH'].searchsorted(d) < len(vals) else 0))
-                        features.append(col)
         
                 X_train = df_f[features]
                 y_train = df_f['ORIGINAL_SHIPPING_QTY']
@@ -656,9 +655,6 @@ def run_real_time_forecast(original_df, forecast_df):
                 test_row['ROLLING_STD_3'] = np.std(future_series[-3:]) if len(future_series) >= 3 else 0
                 test_row['ROLLING_STD_6'] = np.std(future_series[-6:]) if len(future_series) >= 6 else 0
                 test_row['GROWTH_LAG_3_6'] = lags[2] / (lags[5] + 1e-8) if len(lags) >= 6 else 0
-                # Categorical: gunakan nilai terakhir
-                for col in cat_cols:
-                    test_row[col] = future_df_f[col].iloc[-1] if col in future_df_f.columns and not future_df_f.empty else 0
                 X_test = pd.DataFrame([test_row])
                 y_pred = model_trained.predict(X_test)
                 fc = float(y_pred[0]) if len(y_pred) > 0 else 0
@@ -684,6 +680,9 @@ def run_real_time_forecast(original_df, forecast_df):
             })
     
     df_res = pd.DataFrame(results)
+    # Drop FORECAST column if it exists (prevent NaN column)
+    if 'FORECAST' in df_res.columns:
+        df_res = df_res.drop(columns=['FORECAST'])
     logger.info("Real-time forecast completed successfully")
     return df_res
 
