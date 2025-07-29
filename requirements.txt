@@ -1,6 +1,6 @@
 plotly==5.17.0
 streamlit==1.47.1
-numpy==2.3.2
+numpy==1.26.4
 pandas==2.3.1
 scikit-learn==1.5.2
 xgboost==3.0.2
