@@ -6,4 +6,5 @@ libopenblas-dev
 liblapack-dev
 python3-pip
 python3-setuptools
-gfortran 
+gfortran
+pkg-config 
