@@ -30,48 +30,65 @@ logger = logging.getLogger(__name__)
 # - Real-time: WMA adaptif berdasarkan korelasi dan stabilitas data
 
 def forecast_ma6(series):
-    return np.mean(series[-6:])
+    """
+    MA dengan penyesuaian jumlah data:
+    - Jika data >= 6 bulan: ambil rata-rata 6 bulan terakhir
+    - Jika data < 6 bulan: ambil rata-rata semua data yang tersedia
+    """
+    if len(series) == 0:
+        return np.nan
+    
+    # Jika data >= 6 bulan, ambil 6 bulan terakhir
+    if len(series) >= 6:
+        return np.mean(series[-6:])
+    else:
+        # Jika data < 6 bulan, ambil rata-rata semua data yang tersedia
+        return np.mean(series)
 
 def forecast_wma(series, actual=None, window=6):
     """
-    WMA dengan strategi hybrid:
-    - Backtesting: Gunakan minimize untuk optimisasi bobot mendekati nilai aktual
-    - Real-time: Gunakan WMA adaptif (korelasi + stabilitas)
+    WMA dengan strategi hybrid dan penyesuaian jumlah data:
+    - Backtesting: Optimisasi bobot dengan minimize untuk mendekati nilai aktual
+    - Real-time: WMA adaptif berdasarkan korelasi dan stabilitas data
+    - Penyesuaian window: Jika data < window, gunakan semua data yang tersedia
     
     Parameters:
     - series: historical data
     - actual: actual value (untuk backtesting)
-    - window: number of periods
+    - window: number of periods (default: 6)
     """
-    if len(series) < window:
+    if len(series) == 0:
         return np.nan
+    
+    # Penyesuaian window berdasarkan jumlah data yang tersedia
+    actual_window = min(window, len(series))
     
     # CASE 1: BACKTESTING (dengan nilai aktual) - Optimisasi bobot dengan minimize
     if actual is not None:
         def objective(weights):
             weights = np.array(weights)
             weights /= weights.sum()
-            forecast = np.sum(series[-window:] * weights)
+            forecast = np.sum(series[-actual_window:] * weights)
             return abs(forecast - actual)
         
-        bounds = [(0, 1)] * window
+        bounds = [(0, 1)] * actual_window
         constraints = [{'type': 'eq', 'fun': lambda w: np.sum(w) - 1}]
-        init_weights = np.repeat(1 / window, window)
+        init_weights = np.repeat(1 / actual_window, actual_window)
         result = minimize(objective, init_weights, bounds=bounds, constraints=constraints)
         
         if result.success:
             optimal_weights = result.x / result.x.sum()
-            forecast = np.sum(series[-window:] * optimal_weights)
+            forecast = np.sum(series[-actual_window:] * optimal_weights)
             return max(forecast, 0)
         else:
             # Fallback ke WMA tradisional jika optimisasi gagal
-            weights = np.arange(1, window + 1) / np.arange(1, window + 1).sum()
-            forecast = np.sum(series[-window:] * weights)
+            weights = np.arange(1, actual_window + 1) / np.arange(1, actual_window + 1).sum()
+            forecast = np.sum(series[-actual_window:] * weights)
             return max(forecast, 0)
     
     # CASE 2: REAL-TIME FORECASTING (tanpa nilai aktual) - WMA adaptif
     else:
-        return forecast_wma_adaptive_realtime(series, window)
+        return forecast_wma_adaptive_realtime(series, actual_window)
 
 def forecast_ets(series, val_size=3):
     if len(series) < (val_size + 3):
@@ -151,26 +168,29 @@ def forecast_wma_adaptive_realtime(series, window=6, min_history=12):
     - window: number of periods
     - min_history: minimal data untuk analisis (default: 12)
     """
-    if len(series) < window:
+    if len(series) == 0:
         return np.nan
     
-    # Fallback ke WMA tradisional jika data tidak cukup
+    # Penyesuaian window berdasarkan jumlah data yang tersedia
+    actual_window = min(window, len(series))
+    
+    # Fallback ke WMA tradisional jika data tidak cukup untuk analisis adaptif
     if len(series) < min_history:
-        weights = np.arange(1, window + 1) / np.arange(1, window + 1).sum()
-        forecast = np.sum(series[-window:] * weights)
+        weights = np.arange(1, actual_window + 1) / np.arange(1, actual_window + 1).sum()
+        forecast = np.sum(series[-actual_window:] * weights)
         return max(forecast, 0)
     
     # Ambil data untuk analisis (semua data kecuali window terakhir)
-    analysis_data = series[:-window]
-    recent_data = series[-window:]
+    analysis_data = series[:-actual_window]
+    recent_data = series[-actual_window:]
     
     # 1. Analisis korelasi setiap posisi dengan nilai berikutnya
     correlations = []
-    for pos in range(window):
+    for pos in range(actual_window):
         pos_correlations = []
-        for i in range(len(analysis_data) - window):
-            window_data = analysis_data[i:i+window]
-            next_value = analysis_data[i+window]
+        for i in range(len(analysis_data) - actual_window):
+            window_data = analysis_data[i:i+actual_window]
+            next_value = analysis_data[i+actual_window]
             correlation = np.corrcoef([window_data.iloc[pos]], [next_value])[0,1]
             if not np.isnan(correlation):
                 pos_correlations.append(correlation)
@@ -184,10 +204,10 @@ def forecast_wma_adaptive_realtime(series, window=6, min_history=12):
     
     # 2. Analisis volatilitas setiap posisi
     volatilities = []
-    for pos in range(window):
+    for pos in range(actual_window):
         pos_values = []
-        for i in range(len(analysis_data) - window):
-            window_data = analysis_data[i:i+window]
+        for i in range(len(analysis_data) - actual_window):
+            window_data = analysis_data[i:i+actual_window]
             pos_values.append(window_data.iloc[pos])
         
         if pos_values:
