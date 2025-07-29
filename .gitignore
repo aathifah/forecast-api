@@ -138,10 +138,11 @@ dmypy.json
 .DS_Store
 Thumbs.db
 
-# Project specific
-*.xlsx
-*.xls
-*.csv
-logs/
+# Temporary files
 temp/
-uploads/
+tmp/
+*.tmp
+debug_*.xlsx
+
+# Streamlit
+.streamlit/secrets.toml 
