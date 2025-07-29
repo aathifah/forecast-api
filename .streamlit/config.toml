@@ -7,7 +7,4 @@ textColor = "#262730"
 [server]
 enableCORS = false
 enableXsrfProtection = false
-maxUploadSize = 200
-
-[build]
-pythonVersion = "3.11"
+maxUploadSize = 200 
