@@ -3,17 +3,11 @@ primaryColor = "#FF6B6B"
 backgroundColor = "#FFFFFF"
 secondaryBackgroundColor = "#F0F2F6"
 textColor = "#262730"
-font = "sans serif"
 
 [server]
-headless = true
-port = 8501
 enableCORS = false
 enableXsrfProtection = false
 maxUploadSize = 200
-
-[browser]
-gatherUsageStats = false 
 
 [build]
 pythonVersion = "3.11" 
